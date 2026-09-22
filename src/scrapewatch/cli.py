@@ -8,11 +8,15 @@ previous `scrape` already wrote.
 
 `scrape`'s exit code follows one rule: 0 even when a source was skipped, because a
 skip is a fact `run-stats.json` already states, not a reason to fail the invocation
-that reported it — 1 only when `run_sources` itself raises, which is a run that
-produced nothing at all to report.
+that reported it — 1 when the run itself could not produce its outputs, which covers
+`run_sources` raising, a retention that could not be applied, and an export that could
+not be written. The last two are deliberate: a run whose data never reached the export
+directory has not delivered what it was asked for, and the pipeline that publishes it
+should hear about that rather than ship a page with the files missing.
 """
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 import tempfile
@@ -42,6 +46,29 @@ app = typer.Typer(help="ScrapeWatch: polite multi-source scraping with change de
 #: Every source this CLI knows about, and the only names `scrape`/`export` accept.
 #: `scrape all` walks them in this order, which is also the order stats print in.
 KNOWN_SOURCES: tuple[str, ...] = ("books", "quotes", "demo")
+
+#: What each source calls the things it collects. Needed for a source the caller
+#: skipped before the run: it is never built, so nothing else can be asked, and
+#: `run-stats.json` still has to carry an entry of the same shape for it.
+SOURCE_KINDS: dict[str, str] = {
+    BooksSource.name: BooksSource.kind,
+    QuotesSource.name: QuotesSource.kind,
+    DemoSource.name: DemoSource.kind,
+}
+
+#: What a snapshot is exported as, per source, and in which order. `--export-dir`
+#: writes `<source>.<ext>` for each, which is exactly what the published page links
+#: (`showcase.build.DATA_FILES`); a name that is not here is never written.
+EXPORT_FORMATS: dict[str, tuple[str, ...]] = {"books": ("csv", "json"), "quotes": ("json",), "demo": ("json",)}
+
+#: How many snapshots per source the database keeps by default. The file is
+#: published every night, so its history is bounded on purpose; the page states the
+#: same number, and `tests/unit/test_showcase_build.py` pins the two together.
+DEFAULT_KEEP_SNAPSHOTS = 30
+
+#: The numeric shape every entry of `run-stats.json` has, so a source that never ran
+#: reads the same way as one that did — zeroes, not absent keys.
+_ZERO_SOURCE_STATS = {"records": 0, "pages": 0, "requests": 0, "retries": 0, "bytes": 0, "seconds": 0.0}
 
 
 def _unknown_source_message(name: str) -> str:
@@ -89,6 +116,81 @@ def _changes_in(report: ChangeReport, name: str) -> int:
     return len(changeset.added) + len(changeset.removed) + len(changeset.changed)
 
 
+def _caller_skips(
+    source: str, *, skip_books: bool, skip_quotes: bool, reason_books: str | None, reason_quotes: str | None
+) -> dict[str, str]:
+    """The sources this invocation dropped before the run, and why.
+
+    Only meaningful for `all`: `scrape demo` does not "skip" books, it was never
+    asked for them. The reason is the caller's own words when given — the CI probe
+    passes what the site actually answered — and a plain statement of the flag
+    otherwise, because "skipped" with no reason is the one thing the page cannot
+    print.
+    """
+    if source != "all":
+        return {}
+    skips: dict[str, str] = {}
+    if skip_books:
+        skips["books"] = reason_books or "skipped by --skip-books"
+    if skip_quotes:
+        skips["quotes"] = reason_quotes or "skipped by --skip-quotes"
+    return skips
+
+
+def _skipped_entry(name: str, reason: str) -> dict:
+    """A `run-stats.json` entry for a source that never ran, in the shape the rest have."""
+    return {
+        **_ZERO_SOURCE_STATS,
+        "kind": SOURCE_KINDS[name],
+        "skipped": True,
+        "reason": reason,
+        "parse_errors": 0,
+        "parse_error_reasons": [],
+    }
+
+
+def _stats_with_caller_skips(stats: dict[str, dict], skips: dict[str, str]) -> dict[str, dict]:
+    """Every source this invocation was responsible for, in `KNOWN_SOURCES` order.
+
+    `run_sources` only ever hears about the sources it was handed, so a source the
+    probe dropped is simply absent from its stats — and a page built from that file
+    cannot say "books was not collected, and here is why". The entry is added here,
+    where the reason is known, rather than by teaching the pipeline about a decision
+    made before it started.
+    """
+    merged = {**stats, **{name: _skipped_entry(name, reason) for name, reason in skips.items()}}
+    ordered = {name: merged[name] for name in KNOWN_SOURCES if name in merged}
+    ordered.update({name: body for name, body in merged.items() if name not in ordered})
+    return ordered
+
+
+def _write_run_stats(out_dir: Path, stats: dict[str, dict]) -> None:
+    """Rewrite `run-stats.json` in place, keeping the timestamp `run_sources` wrote."""
+    path = Path(out_dir) / "run-stats.json"
+    body = json.loads(path.read_text(encoding="utf-8"))
+    body["sources"] = stats
+    path.write_text(json.dumps(body, indent=2), encoding="utf-8")
+
+
+def _export_collected(storage: Storage, stats: dict[str, dict], export_dir: Path) -> list[Path]:
+    """Export every source that actually collected something this run, and only those.
+
+    Reading the run's own verdict rather than the caller's intent is the point: a
+    source can answer the probe with a 200 and still come back with nothing usable,
+    and exporting it anyway would publish yesterday's snapshot under tonight's date
+    while the page said the source was not collected.
+    """
+    written: list[Path] = []
+    for name, body in stats.items():
+        if body.get("skipped"):
+            continue
+        for fmt in EXPORT_FORMATS.get(name, ()):
+            path = Path(export_dir) / f"{name}.{fmt}"
+            storage.export(name, fmt, path)  # type: ignore[arg-type]  # fmt is csv|json by construction
+            written.append(path)
+    return written
+
+
 @app.command()
 def scrape(
     source: str = typer.Argument(..., help="books, quotes, demo, or all."),
@@ -98,12 +200,31 @@ def scrape(
     demo_url: str | None = typer.Option(None, "--demo-url", help="Demo store URL. Defaults to SCRAPEWATCH_DEMO_URL."),
     skip_books: bool = typer.Option(False, "--skip-books", help="Drop books from 'all' (CI reachability probe)."),
     skip_quotes: bool = typer.Option(False, "--skip-quotes", help="Drop quotes from 'all' (CI reachability probe)."),
+    skip_reason_books: str | None = typer.Option(
+        None, "--skip-reason-books", help="Why books was skipped, for run-stats.json and the page."
+    ),
+    skip_reason_quotes: str | None = typer.Option(
+        None, "--skip-reason-quotes", help="Why quotes was skipped, for run-stats.json and the page."
+    ),
+    export_dir: Path | None = typer.Option(
+        None, "--export-dir", help="Export every source that collected something into this directory."
+    ),
+    keep_snapshots: int = typer.Option(
+        DEFAULT_KEEP_SNAPSHOTS, "--keep-snapshots", help="Snapshots kept per source; older ones are deleted."
+    ),
 ) -> None:
     """Fetch one source (or all of them), snapshot it, diff it against the last run, and report."""
     names = _resolved_sources(source, skip_books=skip_books, skip_quotes=skip_quotes)
     if names is None:
         typer.echo(_unknown_source_message(source))
         raise typer.Exit(code=2)
+    skips = _caller_skips(
+        source,
+        skip_books=skip_books,
+        skip_quotes=skip_quotes,
+        reason_books=skip_reason_books,
+        reason_quotes=skip_reason_quotes,
+    )
 
     try:
         # Built inside the guard, not above it: `Settings()` reads the environment,
@@ -120,20 +241,33 @@ def scrape(
         with PoliteClient(settings) as client, _browser_session_for(names, settings) as session:
             sources = _build_sources(names, client, session, max_pages=max_pages, demo_url=resolved_demo_url)
             result = run_sources(sources, storage, settings, out)
+
+        # Everything below is part of producing this run's outputs, so it shares the
+        # run's error handling: an unwritable export directory or a retention that
+        # cannot be applied is a run that did not deliver what it was asked for, and
+        # it says so here rather than leaving CI to publish a page missing its data.
+        stats = _stats_with_caller_skips(result.stats, skips)
+        _write_run_stats(out, stats)
+        pruned = sum(storage.prune(name, keep_snapshots) for name, body in stats.items() if not body["skipped"])
+        exported = _export_collected(storage, stats, export_dir) if export_dir is not None else []
     except Exception as exc:  # a bad --db-url or a run that never produced a result: report it, don't crash
         typer.echo(f"scrape failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    for name in names:
-        stats = result.stats[name]
-        if stats["skipped"]:
-            typer.echo(f"{name}: skipped — {stats['reason']}")
+    for name, body in stats.items():
+        if body["skipped"]:
+            typer.echo(f"{name}: skipped — {body['reason']}")
             continue
         changes = _changes_in(result.report, name)
         typer.echo(
-            f"{name}: {stats['records']} records, {stats['pages']} pages, {stats['requests']} requests, "
-            f"{stats['seconds']:.2f}s, {changes} changes"
+            f"{name}: {body['records']} records, {body['pages']} pages, {body['requests']} requests, "
+            f"{body['seconds']:.2f}s, {changes} changes"
         )
+
+    if pruned:
+        typer.echo(f"pruned {pruned} snapshot(s) beyond the last {keep_snapshots} per source")
+    for path in exported:
+        typer.echo(str(path))
 
     typer.echo(str(out / "run-stats.json"))
     typer.echo(str(out / "change-report.json"))

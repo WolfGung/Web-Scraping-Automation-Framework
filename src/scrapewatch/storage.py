@@ -1,7 +1,10 @@
 """Snapshots that survive a process: every fetch kept, the last two compared, the latest exported.
 
 Every run's snapshot of every source is written to a database, never overwritten, so
-`latest_snapshots` can always hand a diff the two it should compare. The same
+`latest_snapshots` can always hand a diff the two it should compare. The only thing
+that ever removes one is `prune`, which the CLI calls with a retention the caller
+chose: the file is published every night, and a history that grows for ever is a
+download that eventually nobody makes. The same
 SQLAlchemy code runs against SQLite (the default, so the repository works after one
 clone) or PostgreSQL (the Compose profile) — nothing here is SQLite-specific except
 creating the parent directory of a SQLite file, which PostgreSQL has no equivalent of.
@@ -25,7 +28,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
-from sqlalchemy import ForeignKey, Integer, String, Text, create_engine, select
+from sqlalchemy import ForeignKey, Integer, String, Text, create_engine, delete, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from scrapewatch.models import Record
@@ -299,6 +302,50 @@ class Storage:
             row.finished_at = _now_iso()
             row.stats_json = json.dumps(stats, default=str)
             session.commit()
+
+    def prune(self, source: str, keep: int) -> int:
+        """Drop every snapshot of `source` but the newest `keep`, with its records. Returns how many went.
+
+        A nightly run adds a snapshot per source for ever, and the database is
+        published: unbounded growth is a file that eventually nobody can download.
+        Only the last two snapshots are ever diffed, so the rest are history, and a
+        bounded history is the one that keeps being publishable.
+
+        `keep` must be at least 1: pruning to zero would delete the snapshot the run
+        just took, which is the one the next diff needs.
+
+        The ids are read and sliced in Python rather than handed to `OFFSET` without
+        a `LIMIT`, which the two supported dialects spell differently; there is one
+        snapshot per source per run, so the list is nightly-sized either way. The
+        `changes` table is not touched: its rows belong to runs, not to snapshots,
+        and they are the record of what was found rather than a copy of the data.
+        """
+        if keep < 1:
+            raise ValueError(f"keep: must be at least 1, got {keep}")
+        with self._session() as session:
+            ids = list(
+                session.scalars(
+                    select(SnapshotRow.id).where(SnapshotRow.source == source).order_by(SnapshotRow.id.desc())
+                ).all()
+            )
+            doomed = ids[keep:]
+            if not doomed:
+                return 0
+            session.execute(delete(RecordRow).where(RecordRow.snapshot_id.in_(doomed)))
+            session.execute(delete(SnapshotRow).where(SnapshotRow.id.in_(doomed)))
+            session.commit()
+
+        if self._db_url.startswith("sqlite"):
+            # Deleting rows from SQLite leaves the file exactly as large as it was;
+            # the space is reused by later writes but never returned. The file is
+            # published, so its size on disk is the size of somebody's download, and
+            # VACUUM is what actually shrinks it. It cannot run inside a
+            # transaction, hence a connection of its own in autocommit. PostgreSQL
+            # has autovacuum and no file to publish, so it is left alone.
+            assert self._engine is not None  # guaranteed by _session() above
+            with self._engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+                connection.execute(text("VACUUM"))
+        return len(doomed)
 
     def export(self, source: str, fmt: Literal["csv", "json"], path: str | Path) -> None:
         """Write the latest snapshot of `source`, sorted by `external_id`, so repeat exports match byte for byte."""

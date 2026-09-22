@@ -154,12 +154,18 @@
     <p class="eyebrow">Web scraping · portfolio project</p>
     <h1>A scraper that publishes what it collected</h1>
     <p class="lede">
-      {{RECORDS}} records from three sources in one night: a static book
-      catalogue over plain HTTP, a page that only exists once JavaScript has run,
-      and a demo store that ships inside this repository and moves its own prices
-      every day. Each run is compared against the last one, so this page can say
-      what changed and not only that something ran. Every figure on it is read out
-      of that run when the page is generated.
+      {{RECORDS}} records in one night, collected from
+<!--[if all_sources]-->
+      all {{SOURCES}} sources this project scrapes:
+<!--[else all_sources]-->
+      {{COLLECTED}} of the {{SOURCES}} sources this project scrapes — whatever did
+      not answer is named, with its reason, below:
+<!--[end all_sources]-->
+      a static book catalogue over plain HTTP, a page that only exists once
+      JavaScript has run, and a demo store that ships inside this repository and
+      moves its own prices every day. Each run is compared against the last one, so
+      this page can say what changed and not only that something ran. Every figure
+      on it is read out of that run when the page is generated.
     </p>
     <p class="stack">Python · httpx · selectolax · Playwright · pydantic · SQLAlchemy · FastAPI · pytest · Allure · Docker · GitHub Actions</p>
     <nav class="links" aria-label="Project">
@@ -244,6 +250,8 @@
       the next run pulls back before it starts, which is the only reason a nightly
       diff has a yesterday to compare against; and it means anyone can open the
       history with <code>sqlite3</code> instead of taking this page's word for it.
+      It keeps the last {{RETENTION}} nights per source and drops what is older —
+      a published file that grows for ever is a download nobody makes.
     </p>
 <!--[end database]-->
 <!--[end data]-->
@@ -458,13 +466,16 @@
       and that is a different sentence on this page.
     </p>
 
-    <h3>Every snapshot is kept; the diff compares the last two</h3>
+    <h3>Snapshots are kept, not overwritten; the diff compares the last two</h3>
     <p>
-      <code>src/scrapewatch/storage.py</code> never overwrites yesterday. Records are
+      <code>src/scrapewatch/storage.py</code> never writes over yesterday. Records are
       matched across snapshots by the identifier the site gives them — a slug, a
       product id — so a catalogue that reorders itself is not reported as a thousand
       changes, and a price that moved is reported as the one field that moved, with
-      its before and after.
+      its before and after. The history is bounded on purpose: the last
+      {{RETENTION}} snapshots of every source are kept and the rest are pruned after
+      each run, because this database is published and an unbounded one eventually
+      cannot be.
     </p>
 
     <h3>The gate never touches the network</h3>
@@ -484,6 +495,12 @@
       {{TESTS}} checks ran in the same pipeline that published this page:
       {{MARKER_SPLIT}}. They are counted here rather than at the top because this
       project's subject is the data above; the tests are how it is kept true.
+      {{TESTS_PASSED}} of them passed.
+<!--[if tests_failed]-->
+      {{TESTS_FAILED}} did not, and that is stated here rather than left to the
+      report: the gate cannot publish a page at all, so anything red in this run is
+      a check against the real sites, and it is named below.
+<!--[end tests_failed]-->
 <!--[if tests_skipped]-->
       {{TESTS_SKIPPED}} did not run, which is the suite declining to report a failure
       for something it could not reach.
@@ -502,10 +519,10 @@
 <!--[if live_red]-->
     <p class="flag">
 <!--[if live_one]-->
-      The one check against the real practice sites did not pass in this run.
+      The one check against the real practice sites failed in this run.
 <!--[else live_one]-->
-      {{LIVE_OPEN}} of the {{LIVE}} checks against the real practice sites did not
-      pass in this run.
+      {{LIVE_FAILED}} of the {{LIVE}} checks against the real practice sites failed
+      in this run.
 <!--[end live_one]-->
       That is left in plain sight on purpose: those checks are the
       drift detector, and a red one usually means a site changed its markup rather
@@ -514,6 +531,15 @@
       report below names the check and the assertion that failed.
     </p>
 <!--[else live_red]-->
+<!--[if live_skipped]-->
+    <p>
+      {{LIVE_SKIPPED}} of the {{LIVE}} checks against the real practice sites did
+      not run in this publication, and none of the ones that did failed: the parsers
+      still match the markup on everything that was actually reached. A check that
+      was skipped is not a verdict on a site, which is why it is named rather than
+      counted as a pass.
+    </p>
+<!--[else live_skipped]-->
     <p>
 <!--[if live_one]-->
       The one check against the real practice sites passed in this run,
@@ -523,6 +549,7 @@
       which is the statement that the markup those parsers were written for is
       still the markup the sites serve.
     </p>
+<!--[end live_skipped]-->
 <!--[end live_red]-->
 <!--[else live_ran]-->
     <p class="note">

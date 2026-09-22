@@ -21,6 +21,7 @@ jobs:
   gate:
     name: Lint, unit, parsers, integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,6 +40,7 @@ jobs:
   e2e:
     name: Browser engine and demo store
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,6 +64,7 @@ jobs:
     # gated on the schedule and on the manual run that ticked `publish`.
     name: Practice sites reachable from this runner
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish)
     outputs:
       books: ${{ steps.probe.outputs.books }}
@@ -70,15 +73,26 @@ jobs:
       - id: probe
         run: |
           for site in books quotes; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$site.toscrape.com/")
+            # `|| true` is load-bearing: this step runs under `bash -e`, and a DNS
+            # failure, a refused connection or a timeout makes curl exit non-zero,
+            # which would abort the step before anything reached $GITHUB_OUTPUT and
+            # leave the live job with an empty answer instead of "did not answer".
+            # curl still prints 000 in those cases, and 000 is what gets recorded.
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$site.toscrape.com/" || true)
             echo "$site=$code" >> "$GITHUB_OUTPUT"
-            echo "$site.toscrape.com answered HTTP $code"
-            [ "$code" = "200" ] || echo "::notice title=$site skipped::$site.toscrape.com answered HTTP $code; that source is skipped tonight, the others still run."
+            if [ "$code" = "200" ]; then
+              echo "$site.toscrape.com answered HTTP 200"
+            elif [ "$code" = "000" ]; then
+              echo "::notice title=$site skipped::$site.toscrape.com did not answer this runner at all — no HTTP response, so a DNS failure, a refused connection or a timeout. That source is skipped tonight, the others still run."
+            else
+              echo "::notice title=$site skipped::$site.toscrape.com answered HTTP $code; that source is skipped tonight, the others still run."
+            fi
           done
 
   live:
     name: Nightly live scrape
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [gate, e2e, reachable]
     steps:
       - uses: actions/checkout@v4
@@ -116,16 +130,34 @@ jobs:
             exit 1
           fi
 
-      - name: Scrape every source that answered
+      - name: Scrape every source that answered, and export what it collected
         # The probe's answer becomes flags here rather than in the `run:` line
         # above, because `--skip-books=${{ ... }}` is not how the flag is spelled:
         # it is a boolean switch that takes no value, so the shell composes it.
+        # The reason travels with the flag: a source dropped before the run never
+        # reaches `run_sources`, so the CLI is the only place that can put it in
+        # `run-stats.json` for the page to state.
+        #
+        # The exports are the same command's job (`--export-dir`), and not a step
+        # of their own gated on the probe: a site can answer 200 and still yield
+        # nothing usable, and exporting on the probe's word would publish
+        # yesterday's snapshot under tonight's date while the page said the source
+        # was not collected. The CLI exports what this run's own verdict says it
+        # collected.
         run: |
-          FLAGS=""
-          [ "${{ needs.reachable.outputs.books }}" = "200" ] || FLAGS="$FLAGS --skip-books"
-          [ "${{ needs.reachable.outputs.quotes }}" = "200" ] || FLAGS="$FLAGS --skip-quotes"
-          # shellcheck disable=SC2086 # FLAGS is a list of switches, not one word
-          scrapewatch scrape all --out data/run $FLAGS
+          books="${{ needs.reachable.outputs.books }}"
+          quotes="${{ needs.reachable.outputs.quotes }}"
+          reason() {  # $1 = site, $2 = the code the probe recorded
+            if [ "$2" = "000" ]; then
+              echo "$1.toscrape.com did not answer the CI runner at all — no HTTP response"
+            else
+              echo "$1.toscrape.com answered HTTP $2 from the CI runner"
+            fi
+          }
+          FLAGS=()
+          [ "$books" = "200" ] || FLAGS+=(--skip-books --skip-reason-books "$(reason books "$books")")
+          [ "$quotes" = "200" ] || FLAGS+=(--skip-quotes --skip-reason-quotes "$(reason quotes "$quotes")")
+          scrapewatch scrape all --out data/run --export-dir data/exports "${FLAGS[@]}"
         env:
           SCRAPEWATCH_RECORD_VIDEO: "true"
 
@@ -134,21 +166,6 @@ jobs:
         # recording the published page shows is produced here, deliberately, with
         # the fixed names the page and the publish step expect.
         run: scrapewatch record-scroll --out media
-
-      - name: Export the snapshots
-        # Each export is guarded by the same probe the scrape was: a source that
-        # was not collected tonight has only an older snapshot in the database,
-        # and publishing that under tonight's date would be a quiet lie.
-        run: |
-          mkdir -p data/exports
-          if [ "${{ needs.reachable.outputs.books }}" = "200" ]; then
-            scrapewatch export books --format csv --out data/exports/books.csv
-            scrapewatch export books --format json --out data/exports/books.json
-          fi
-          if [ "${{ needs.reachable.outputs.quotes }}" = "200" ]; then
-            scrapewatch export quotes --format json --out data/exports/quotes.json
-          fi
-          scrapewatch export demo --format json --out data/exports/demo.json
 
       - name: Check the live sites against the parsers
         # Not allowed to stop the job: a red live check is the drift signal this
@@ -171,6 +188,7 @@ jobs:
   showcase:
     name: Publish showcase
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: live
     # Two gates, and no third one. The branch is gated here; the run being green
     # is gated by `needs`, which holds this job back until the gate, the browser

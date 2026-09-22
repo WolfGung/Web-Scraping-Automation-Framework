@@ -28,6 +28,27 @@ import sys
 from pathlib import Path
 
 
+def _present(sources: list[Path]) -> list[Path]:
+    """The sources that exist, with a missing *directory* treated as a failure.
+
+    A file that is not there is ordinary: a job may legitimately not have written
+    its `categories.json` (see `tests/conftest.py`, where every write is a courtesy
+    to the report and never a reason to fail a run). A directory that is not there
+    is a different thing entirely — it means the job that should have uploaded those
+    results did not, or the artefact never came down — and merging the two jobs that
+    did arrive would quietly publish a report missing a third of the suite. That is
+    worth stopping for, and the message names the path that was expected.
+    """
+    for source in sources:
+        if not source.parent.is_dir():
+            raise ValueError(
+                f"no results directory at {source.parent}; the job that should have "
+                f"produced {source.name} did not, so the merged report would be "
+                f"missing its results entirely"
+            )
+    return [source for source in sources if source.is_file()]
+
+
 def merge_categories(sources: list[Path], target: Path) -> None:
     """Copy `categories.json` from whichever source has it.
 
@@ -37,7 +58,7 @@ def merge_categories(sources: list[Path], target: Path) -> None:
     that would hide a change in the categories file without a trace -- it stops the
     run instead.
     """
-    present = [s for s in sources if s.is_file()]
+    present = _present(sources)
     if not present:
         return
     first = present[0]
@@ -64,7 +85,7 @@ def merge_environment_properties(sources: list[Path], target: Path) -> None:
     The same key with the *same* value in more than one source is not a collision;
     it is merged into one line.
     """
-    present = [s for s in sources if s.is_file()]
+    present = _present(sources)
     if not present:
         return
     merged: dict[str, str] = {}

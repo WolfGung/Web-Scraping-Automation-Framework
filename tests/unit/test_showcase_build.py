@@ -1,11 +1,13 @@
 """The page states the run it was built from, not numbers typed by hand.
 
-Что: сборка витрины из `run-stats.json`, `change-report.json` и Allure-результатов
-одного прогона — числа, экранирование, честная деградация без видео и схем.
-Зачем: страница публичная, и число на ней, расходящееся с отчётом рядом, хуже
-отсутствия страницы; каждая цифра должна быть прочитана из прогона.
-Как: собираем искусственный прогон во временном каталоге, строим страницу и
-проверяем и сами подсчёты, и то, что страница о них говорит.
+Every figure on the published page is read out of one run's `run-stats.json`,
+`change-report.json` and Allure results. The page is public and sits beside the
+report it describes, so a number that disagrees with that report is worse than no
+page at all — and a page that promises a recording it does not have, or shows a
+broken image where a diagram should be, has already lost the reader.
+
+Each test here assembles an artificial run in a temporary directory, builds the page
+from it, and checks both the counting and what the page then says about it.
 """
 from __future__ import annotations
 
@@ -207,6 +209,33 @@ def test_a_skipped_source_is_named_with_the_reason_the_run_recorded(
     prose = _prose(_page(results, tmp_path / "run", tmp_path))
     assert "books.toscrape.com was not collected: books.toscrape.com answered HTTP 503." in prose
     assert "not collected — books.toscrape.com answered HTTP 503" in prose
+
+
+def test_the_lede_counts_the_sources_that_were_collected(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """It used to say "records from three sources" whatever happened, which is a
+    typed claim about a night in which one of them may not have answered at all."""
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "collected from all 3 sources this project scrapes" in prose
+    assert "of the 3 sources this project scrapes — whatever did not answer" not in prose
+
+
+def test_the_lede_says_so_when_a_source_did_not_answer(
+    results: Path, tmp_path: Path
+) -> None:
+    _write_run(
+        tmp_path / "run",
+        stats={
+            "books": _source_stats(skipped=True, reason="HTTP 503"),
+            "quotes": _source_stats(records=100, pages=10),
+            "demo": _source_stats(records=40, pages=4, requests=5),
+        },
+        changes={"demo": {"added": 0, "removed": 0, "changed": 7, "changes": []}},
+    )
+    prose = _prose(_page(results, tmp_path / "run", tmp_path))
+    assert "collected from 2 of the 3 sources this project scrapes" in prose
+    assert "whatever did not answer is named, with its reason, below" in prose
 
 
 def test_a_run_with_nothing_skipped_says_nothing_about_skipping(
@@ -512,6 +541,25 @@ def test_the_split_by_marker_is_on_the_page(
     assert "1 against the real practice sites" in prose
 
 
+def test_the_suite_figures_are_on_the_page(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """A page that holds a number and never states it is a number nobody checked."""
+    _result(results, "f", "failed", "tests.live.test_quotes_live", ["live"])
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "6 checks ran in the same pipeline" in prose
+    assert "5 of them passed" in prose
+    assert "1 did not" in prose
+
+
+def test_a_clean_run_does_not_announce_failures(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "5 of them passed" in prose
+    assert "1 did not," not in prose
+
+
 def test_a_red_live_check_is_stated_beside_the_report_button(
     results: Path, run_dir: Path, tmp_path: Path
 ) -> None:
@@ -519,7 +567,7 @@ def test_a_red_live_check_is_stated_beside_the_report_button(
     to keep the page green would remove the one thing the page is evidence of."""
     _result(results, "f", "failed", "tests.live.test_quotes_live", ["live"])
     prose = _prose(_page(results, run_dir, tmp_path))
-    assert "1 of the 2 checks against the real practice sites did not pass" in prose
+    assert "1 of the 2 checks against the real practice sites failed in this run" in prose
     assert "still collected and still published" in prose
 
 
@@ -551,6 +599,31 @@ def test_results_without_any_live_check_do_not_claim_one(tmp_path: Path) -> None
     prose = _prose(_page(results, tmp_path / "run", tmp_path))
     assert "No checks against the real practice sites are counted" in prose
     assert "did not pass in this run" not in prose
+
+
+def test_a_skipped_live_check_is_not_reported_as_a_red_one(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """A live check that did not run says nothing about the site. Counting it as
+    "did not pass" would announce drift on a night when nothing drifted — and the
+    whole point of the live leg is that a red one means something."""
+    _result(results, "f", "skipped", "tests.live.test_quotes_live", ["live"])
+    summary = summarise(results)
+    assert (summary.live.failed, summary.live.skipped, summary.live.not_passed) == (0, 1, 1)
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "failed in this run" not in prose
+    assert "1 of the 2 checks against the real practice sites did not run" in prose
+    assert "none of the ones that did failed" in prose
+
+
+def test_a_broken_live_check_is_red_like_a_failed_one(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """`broken` is what Allure records for a connection error or a Playwright
+    timeout, which is most of what a live check dies of."""
+    _result(results, "f", "broken", "tests.live.test_books_live", ["live"])
+    assert summarise(results).live.failed == 1
+    assert "failed in this run" in _prose(_page(results, run_dir, tmp_path))
 
 
 def test_a_skipped_check_is_counted_and_said_on_the_page(
@@ -613,6 +686,30 @@ def test_a_test_that_lost_its_marker_stops_the_build(results: Path) -> None:
     _result(results, "f", "passed", "tests.integration.test_storage", [])
     with pytest.raises(ValueError, match="tests/integration"):
         summarise(results)
+
+
+def test_the_page_states_the_retention_the_cli_applies() -> None:
+    """The page tells a reader how much history the published database holds. The
+    number that actually holds it is the CLI's `--keep-snapshots` default, and the
+    page's copy is a constant in the builder — pinned here, because a page that
+    promises thirty nights of a file that keeps seven is a lie nothing else
+    catches."""
+    from scrapewatch.cli import DEFAULT_KEEP_SNAPSHOTS
+    from showcase.build import RETENTION_NIGHTS
+
+    assert RETENTION_NIGHTS == DEFAULT_KEEP_SNAPSHOTS
+
+
+def test_the_retention_is_stated_on_the_page(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    from showcase.build import RETENTION_NIGHTS
+
+    data = tmp_path / "exports"
+    data.mkdir()
+    (data / "scrapewatch.sqlite3").write_bytes(b"s" * 4096)
+    prose = _prose(_page(results, run_dir, tmp_path, data_dir=data))
+    assert f"It keeps the last {RETENTION_NIGHTS} nights per source" in prose
 
 
 def test_the_builder_knows_every_marker_the_suite_registers() -> None:

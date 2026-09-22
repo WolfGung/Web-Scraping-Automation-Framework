@@ -59,11 +59,19 @@ fi
 # download to a shared path, would).
 mkdir -p "$RESULTS"
 for dir in "$GATE_RESULTS" "$E2E_RESULTS" "$LIVE_RESULTS"; do
-  if [ -d "$dir" ]; then
-    find "$dir" -mindepth 1 -maxdepth 1 \
-      ! -name categories.json ! -name environment.properties \
-      -exec cp -t "$RESULTS" {} +
+  # A missing directory is a job that did not upload its results, or an artefact
+  # that never came down. Merging the ones that did arrive would publish a report
+  # missing a whole leg of the suite, with a figure on the page to match, so this
+  # stops instead — the same rule `showcase/merge.py` applies a few lines below,
+  # stated here because this loop would otherwise skip the directory silently.
+  if [ ! -d "$dir" ]; then
+    echo "publish: no results directory at $dir — the job that should have uploaded" >&2
+    echo "publish: it did not, so this run would publish a partial report. Stopping." >&2
+    exit 1
   fi
+  find "$dir" -mindepth 1 -maxdepth 1 \
+    ! -name categories.json ! -name environment.properties \
+    -exec cp -t "$RESULTS" {} +
 done
 python3 showcase/merge.py categories \
   "$GATE_RESULTS/categories.json" "$E2E_RESULTS/categories.json" "$LIVE_RESULTS/categories.json" \
@@ -219,3 +227,8 @@ else
 fi
 cd ..
 git worktree remove --force publish-tree
+# The branch outlives the worktree that held it, and a leftover one is what makes a
+# second run in the same checkout collide on the name. The guard at the top of this
+# script can clean up after a run that died before reaching this line; a run that
+# finished cleans up after itself, whether it pushed or only said what it would have.
+git branch -D gh-pages-new > /dev/null

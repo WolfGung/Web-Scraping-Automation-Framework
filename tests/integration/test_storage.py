@@ -8,11 +8,12 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from scrapewatch.models import Record
 from scrapewatch.pipeline.diff import diff
-from scrapewatch.storage import ChangeRow, Storage
+from scrapewatch.storage import ChangeRow, RecordRow, SnapshotRow, Storage
 
 pytestmark = pytest.mark.integration
 
@@ -134,3 +135,85 @@ def test_changes_table_records_change_type_and_only_changed_rows_carry_a_payload
     assert by_type["removed"].field is None
     assert by_type["removed"].before_json is None
     assert by_type["removed"].after_json is None
+
+
+# Retention: the database is published every night, so its history is bounded.
+
+
+def _snapshot_count(storage: Storage, source: str = "demo") -> int:
+    with Session(storage._engine) as session:
+        return len(session.scalars(select(SnapshotRow.id).where(SnapshotRow.source == source)).all())
+
+
+def test_prune_keeps_the_newest_snapshots_and_drops_the_rest(storage: Storage) -> None:
+    for price in ("10", "11", "12", "13"):
+        run = storage.start_run(["demo"])
+        storage.save_snapshot(run, "demo", [_rec("1", price=Decimal(price))])
+        storage.finish_run(run, {})
+
+    assert storage.prune("demo", keep=2) == 2
+    assert _snapshot_count(storage) == 2
+
+    latest, previous = storage.latest_snapshots("demo", n=2)
+    assert [r.fields["price"] for r in latest] == [Decimal("13")]
+    assert [r.fields["price"] for r in previous] == [Decimal("12")]
+
+
+def test_prune_takes_the_records_of_a_dropped_snapshot_with_it(storage: Storage) -> None:
+    """A snapshot's rows are most of the file; leaving them behind would keep the
+    database growing while the page said the history was bounded."""
+    for price in ("10", "11", "12"):
+        run = storage.start_run(["demo"])
+        storage.save_snapshot(run, "demo", [_rec("1", price=Decimal(price)), _rec("2", price=Decimal(price))])
+        storage.finish_run(run, {})
+
+    storage.prune("demo", keep=1)
+
+    with Session(storage._engine) as session:
+        assert len(session.scalars(select(RecordRow.id)).all()) == 2
+
+
+def test_prune_leaves_another_sources_history_alone(storage: Storage) -> None:
+    for _ in range(3):
+        run = storage.start_run(["demo", "books"])
+        storage.save_snapshot(run, "demo", [_rec("1", price=Decimal("10"))])
+        storage.save_snapshot(run, "books", [_rec("1", price=Decimal("10"))])
+        storage.finish_run(run, {})
+
+    assert storage.prune("demo", keep=1) == 2
+    assert _snapshot_count(storage, "demo") == 1
+    assert _snapshot_count(storage, "books") == 3
+
+
+def test_prune_with_nothing_to_drop_changes_nothing(storage: Storage) -> None:
+    run = storage.start_run(["demo"])
+    storage.save_snapshot(run, "demo", [_rec("1", price=Decimal("10"))])
+    storage.finish_run(run, {})
+
+    assert storage.prune("demo", keep=30) == 0
+    assert _snapshot_count(storage) == 1
+
+
+def test_prune_refuses_to_delete_the_snapshot_the_next_diff_needs(storage: Storage) -> None:
+    """Keeping zero would delete the run's own snapshot, which is the one the next
+    run compares against — a retention that quietly disables change detection."""
+    run = storage.start_run(["demo"])
+    storage.save_snapshot(run, "demo", [_rec("1", price=Decimal("10"))])
+
+    with pytest.raises(ValueError, match="must be at least 1"):
+        storage.prune("demo", keep=0)
+    assert _snapshot_count(storage) == 1
+
+
+def test_a_pruned_database_still_diffs_the_two_snapshots_it_kept(storage: Storage) -> None:
+    """The point of the retention is that it changes nothing a reader can see."""
+    for price in ("10", "11", "12"):
+        run = storage.start_run(["demo"])
+        storage.save_snapshot(run, "demo", [_rec("1", price=Decimal(price))])
+        storage.finish_run(run, {})
+    storage.prune("demo", keep=2)
+
+    latest, previous = storage.latest_snapshots("demo", n=2)
+    assert [(c.field, c.before, c.after) for c in diff(previous, latest).changed] == [
+        ("price", Decimal("11"), Decimal("12"))
+    ]

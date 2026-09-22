@@ -70,6 +70,15 @@ DATA_FILES: tuple[tuple[str, str], ...] = (
 #: which is the only reason a nightly diff has a yesterday at all.
 DATABASE_FILE = "scrapewatch.sqlite3"
 
+#: How many snapshots per source the published database keeps, which the page
+#: states as part of describing what that file is. The number itself lives in
+#: `scrapewatch.cli.DEFAULT_KEEP_SNAPSHOTS`, which is what actually applies it;
+#: this is the page's copy, and `test_the_page_states_the_retention_the_cli_applies`
+#: fails if the two ever part company. Importing the CLI here instead would drag
+#: typer, uvicorn and Playwright into a build step that otherwise needs nothing but
+#: the standard library.
+RETENTION_NIGHTS = 30
+
 #: A recording smaller than this is a truncated file, not a video.
 MIN_VIDEO_BYTES = 10 * 1024
 
@@ -659,6 +668,9 @@ def build_site(
         "database": (out_dir / "data" / DATABASE_FILE).is_file(),
         "data": any((out_dir / "data" / name).is_file() for name, _ in DATA_FILES),
         "skipped": bool(collection.skipped),
+        # The lede used to say "records from three sources", which was a typed claim
+        # about a night in which one of them may not have answered at all.
+        "all_sources": bool(collection.sources) and not collection.skipped,
         "parse_errors": collection.parse_errors > 0,
         "retries": collection.retries > 0,
         "changes_found": collection.changes > 0,
@@ -667,7 +679,12 @@ def build_site(
         "tests_unknown": summary.suite.unknown > 0,
         "tests_flaky": summary.suite.flaky > 0,
         "live_ran": summary.live.total > 0,
-        "live_red": summary.live.not_passed > 0,
+        # Red means a check *failed* — `Tally.failed` counts Allure's `failed` and
+        # `broken` together. `not_passed` would also sweep in a skipped check, and
+        # a live check that did not run is not a statement about the site: the page
+        # would announce drift on a night when nothing drifted.
+        "live_red": summary.live.failed > 0,
+        "live_skipped": summary.live.skipped > 0,
         # The prose about the live checks is written for a plural and reads as
         # nonsense over a 1 — "1 of the 1 checks did not pass" — so each count gets
         # a sentence that is true of it, the way the sibling project's page does.
@@ -698,6 +715,8 @@ def build_site(
             "CHANGES": _text(collection.changes),
             "PARSE_ERRORS": _text(collection.parse_errors),
             "SECONDS": _text(_seconds(collection.seconds)),
+            "COLLECTED": _text(len(collection.sources) - len(collection.skipped)),
+            "SOURCES": _text(len(collection.sources)),
             "SOURCE_ROWS": _source_rows(collection),
             "SKIPPED_PROSE": _skipped_prose(collection),
             "CHANGES_PROSE": _changes_prose(collection),
@@ -711,7 +730,9 @@ def build_site(
             "TESTS_FLAKY": _text(summary.suite.flaky),
             "MARKER_SPLIT": _marker_split(summary),
             "LIVE": _text(summary.live.total),
-            "LIVE_OPEN": _text(summary.live.not_passed),
+            "LIVE_FAILED": _text(summary.live.failed),
+            "LIVE_SKIPPED": _text(summary.live.skipped),
+            "RETENTION": _text(RETENTION_NIGHTS),
             "FINISHED": _text(summary.finished.strftime("%d %B %Y, %H:%M UTC")),
             "REVISION": _text(revision[:7]),
             "RUN_URL": safe_run_url,

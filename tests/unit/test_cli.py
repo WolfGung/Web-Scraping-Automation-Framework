@@ -1,11 +1,14 @@
 """scrapewatch's command line, exercised through Typer's own `CliRunner`.
 
-Three tests, deliberately kept few: an unknown source is refused before anything
-runs, a bad `--db-url` is reported instead of crashing, and a real (if tiny) `scrape
-demo` writes both output files. Everything else the CLI does — `report`, `export`,
-`stats`, `demo-store` — is a thin wrapper over `Storage`/`diff`/`ChangeReport`,
-already proven in `tests/integration` and `tests/unit/test_report.py`; re-testing
-their logic here through the CLI would only restate it.
+Deliberately few, and each about something only the CLI can get wrong: an unknown
+source is refused before anything runs, a bad `--db-url` is reported instead of
+crashing, a real (if tiny) `scrape demo` writes both output files, a source the
+caller skipped still reaches `run-stats.json` with its reason, `--export-dir`
+exports what the run collected and nothing else, and `record-scroll` produces the
+two files the published page shows. Everything else the CLI does — `report`,
+`export`, `stats`, `demo-store` — is a thin wrapper over
+`Storage`/`diff`/`ChangeReport`, already proven in `tests/integration` and
+`tests/unit/test_report.py`; re-testing their logic here would only restate it.
 
 `test_scrape_demo_writes_stats_and_report` starts a real HTTP server (`demo_store_url`,
 shared from the top-level `tests/conftest.py`), so it carries its own `e2e` marker
@@ -16,10 +19,15 @@ calls unit.
 """
 from __future__ import annotations
 
+import json
+
 import pytest
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 from scrapewatch.cli import app
+from scrapewatch.storage import SnapshotRow
 
 
 @pytest.mark.unit
@@ -63,14 +71,92 @@ def test_scrape_demo_writes_stats_and_report(tmp_path, demo_store_url) -> None:
 
 
 @pytest.mark.e2e
-def test_record_scroll_writes_the_recording_and_the_trace_the_page_publishes(tmp_path, demo_store_url) -> None:
-    """Что: `record-scroll` против живого демо-магазина.
+def test_a_source_the_caller_skipped_reaches_the_run_statistics_with_its_reason(
+    tmp_path, demo_store_url
+) -> None:
+    """A source dropped before the run never reaches `run_sources`, so nothing in
+    the pipeline can write it down — and the published page could not then say
+    "books was not collected, and here is what the site answered". The CLI knows the
+    reason, because it was given it, so the CLI is where the entry is added.
+    """
+    result = CliRunner().invoke(
+        app,
+        [
+            "scrape", "all",
+            "--skip-books", "--skip-reason-books", "HTTP 503",
+            "--skip-quotes",
+            "--out", str(tmp_path),
+            "--demo-url", demo_store_url,
+            "--db-url", f"sqlite:///{tmp_path}/db.sqlite3",
+        ],
+    )
+    assert result.exit_code == 0, result.output
 
-    Зачем: витрина публикует ровно два файла с фиксированными именами — запись
-    прокрутки и trace к ней; если команда назовёт их иначе или не доведёт прокрутку
-    до конца, страница молча опубликуется без видео.
-    Как: гоняем команду через CliRunner и проверяем оба файла и число карточек —
-    прокрутка обязана дойти до конца каталога, а не остановиться на первой странице.
+    sources = json.loads((tmp_path / "run-stats.json").read_text(encoding="utf-8"))["sources"]
+    assert list(sources) == ["books", "quotes", "demo"]  # the order the page's table follows
+    assert sources["books"]["skipped"] is True
+    assert sources["books"]["reason"] == "HTTP 503"
+    assert sources["books"]["records"] == 0 and sources["books"]["kind"] == "books"
+    # A skip with no reason given still says something a reader can act on.
+    assert sources["quotes"]["reason"] == "skipped by --skip-quotes"
+    assert sources["demo"]["skipped"] is False
+
+    assert "books: skipped — HTTP 503" in result.output
+    assert "quotes: skipped — skipped by --skip-quotes" in result.output
+
+
+@pytest.mark.e2e
+def test_export_dir_writes_the_sources_the_run_actually_collected(tmp_path, demo_store_url) -> None:
+    """Exporting on the probe's word rather than the run's would publish yesterday's
+    snapshot of a source that answered but yielded nothing, under tonight's date,
+    while the page said that source was not collected.
+    """
+    result = CliRunner().invoke(
+        app,
+        [
+            "scrape", "all",
+            "--skip-books", "--skip-quotes",
+            "--out", str(tmp_path),
+            "--export-dir", str(tmp_path / "exports"),
+            "--demo-url", demo_store_url,
+            "--db-url", f"sqlite:///{tmp_path}/db.sqlite3",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert sorted(p.name for p in (tmp_path / "exports").iterdir()) == ["demo.json"]
+    assert str(tmp_path / "exports" / "demo.json") in result.output
+
+
+@pytest.mark.e2e
+def test_the_database_keeps_only_the_snapshots_the_caller_asked_for(tmp_path, demo_store_url) -> None:
+    """The database is published every night, so its history is bounded on purpose."""
+    for _ in range(3):
+        result = CliRunner().invoke(
+            app,
+            [
+                "scrape", "demo",
+                "--out", str(tmp_path),
+                "--keep-snapshots", "2",
+                "--demo-url", demo_store_url,
+                "--db-url", f"sqlite:///{tmp_path}/db.sqlite3",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+
+    with Session(create_engine(f"sqlite:///{tmp_path}/db.sqlite3")) as session:
+        assert session.scalar(select(func.count()).select_from(SnapshotRow)) == 2
+    assert "pruned 1 snapshot(s) beyond the last 2 per source" in result.output
+
+
+@pytest.mark.e2e
+def test_record_scroll_writes_the_recording_and_the_trace_the_page_publishes(tmp_path, demo_store_url) -> None:
+    """`record-scroll` against a live demo store, end to end.
+
+    The published page shows exactly two files, by name: the recording of the scroll
+    and the Playwright trace of it. A command that named them differently, or that
+    stopped scrolling at the first page, would leave the page to publish itself
+    without a video and say nothing about why — so both files and the number of
+    cards the scroll actually reached are asserted here.
     """
     result = CliRunner().invoke(
         app, ["record-scroll", "--demo-url", demo_store_url, "--out", str(tmp_path / "media")]
