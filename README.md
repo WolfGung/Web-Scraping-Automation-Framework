@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ScrapeWatch collects three catalogues, stores every collection as a snapshot, compares tonight's with last night's, and publishes the data together with the difference. It runs itself every night and leaves the evidence where anyone can open it.
 
