@@ -1,0 +1,16 @@
+.git/
+.venv/
+.pytest_cache/
+.ruff_cache/
+allure-results/
+allure-report/
+site/
+videos/
+traces/
+data/
+*.sqlite3
+.env
+__pycache__/
+*.pyc
+.notes/
+docs/notes/

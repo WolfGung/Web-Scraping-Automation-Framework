@@ -1,0 +1,67 @@
+# `docker compose run --rm scrape` — one source, one container, SQLite on a named
+# volume so the repository works after a single clone with nothing else to set up.
+#
+# `docker compose --profile postgres run --rm scrape-pg` — the same image and the
+# same command, against PostgreSQL instead: `postgres` only starts when that
+# profile is on, and nothing about it is published to the host, since this machine
+# already runs other stands on the usual 5432-family ports.
+name: scrapewatch
+
+services:
+  demo-store:
+    build: .
+    command: ["scrapewatch", "demo-store", "--host", "0.0.0.0", "--port", "8765"]
+    # Loopback only: this is a scrape target for `scrape`/`scrape-pg`, not a service
+    # meant to be reachable from outside this host.
+    ports:
+      - "127.0.0.1:8765:8765"
+
+  scrape:
+    build: .
+    depends_on:
+      - demo-store
+    environment:
+      SCRAPEWATCH_DEMO_URL: http://demo-store:8765
+      # SQLite on a named volume by default, so snapshots survive one container's
+      # exit and the next `docker compose run` sees the same database — the whole
+      # point of a change-detection tool is comparing this run against the last one.
+      SCRAPEWATCH_DB_URL: sqlite:////data/scrapewatch.sqlite3
+    volumes:
+      - scrapewatch-data:/data
+    command: ["scrapewatch", "scrape", "demo", "--out", "/data/run"]
+
+  # PostgreSQL as an opt-in profile: `docker compose --profile postgres up postgres`
+  # (or, more likely, `... run --rm scrape-pg`, which starts it as a dependency).
+  # No host port: only `scrape-pg`, inside the compose network, ever needs one.
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: scrapewatch
+      POSTGRES_PASSWORD: scrapewatch
+      POSTGRES_DB: scrapewatch
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scrapewatch -d scrapewatch"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Same image, same command as `scrape` (via `extends`) — only `SCRAPEWATCH_DB_URL`
+  # differs, pointed at `postgres` instead of the SQLite volume. `extends` does not
+  # carry `depends_on` over from the base service (by design — see the Compose
+  # docs), so both dependencies are declared again here, with `postgres`'s wired to
+  # its healthcheck rather than just its process starting.
+  scrape-pg:
+    extends:
+      service: scrape
+    profiles: ["postgres"]
+    environment:
+      SCRAPEWATCH_DB_URL: postgresql+psycopg://scrapewatch:scrapewatch@postgres:5432/scrapewatch
+    depends_on:
+      demo-store:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+volumes:
+  scrapewatch-data:
