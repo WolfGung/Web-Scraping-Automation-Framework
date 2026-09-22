@@ -35,6 +35,7 @@ from scrapewatch.http import PoliteClient
 from scrapewatch.pipeline.diff import diff
 from scrapewatch.pipeline.report import ChangeReport
 from scrapewatch.pipeline.run import run_sources
+from scrapewatch.sources import KNOWN_SOURCES
 from scrapewatch.sources.base import Source
 from scrapewatch.sources.books import BooksSource
 from scrapewatch.sources.demo import DemoSource
@@ -43,9 +44,11 @@ from scrapewatch.storage import Storage
 
 app = typer.Typer(help="ScrapeWatch: polite multi-source scraping with change detection.")
 
-#: Every source this CLI knows about, and the only names `scrape`/`export` accept.
-#: `scrape all` walks them in this order, which is also the order stats print in.
-KNOWN_SOURCES: tuple[str, ...] = ("books", "quotes", "demo")
+#: Re-exported for the callers that have always asked the CLI what it knows: the
+#: names themselves live in `scrapewatch.sources`, so the drawings, the live check
+#: and this command line all read one list. `scrape all` walks them in that order,
+#: which is also the order stats print in.
+__all__ = ["KNOWN_SOURCES", "app"]
 
 #: What each source calls the things it collects. Needed for a source the caller
 #: skipped before the run: it is never built, so nothing else can be asked, and

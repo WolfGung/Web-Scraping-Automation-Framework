@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web Scraping Automation Framework — cover</title>
+<!--
+  Source of `guru-cover-image.png`, exported by scripts/make-assets.py at
+  exactly 1536x1024 — the size the profile expects, and the size it crops
+  anything else down to.
+
+  The wording lives here as text, so changing a headline is changing a line of
+  markup rather than opening an image editor. Every number below is a number
+  the code holds: 1000 books, 100 quotes and 40 demo products are
+  `scrapewatch.sources.FULL_RUN_SIZES`, their sum is what a full night
+  collects, and the count of sources is `scrapewatch.sources.KNOWN_SOURCES`.
+  Each one is pinned by tests/unit/test_showcase_figures.py against that
+  constant, so a catalogue that changed size fails the build here instead of
+  quietly making a picture lie. Nothing about a run is on this cover — no
+  timings, and no count of tests — because those are facts about one night and
+  this image outlives every night.
+
+  No network is used at render time: the type is a system stack, and every
+  glyph is inline SVG drawn by hand. No logo, icon font or web font is
+  fetched, so the export is reproducible offline and on a machine that shares
+  no fonts with this one.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* The stack the showcase page and both SVG figures already use, and nothing
+     else: no face is bundled with the repository, so naming one that happens
+     to be installed here would hand anyone rendering this elsewhere different
+     letterforms with no warning. */
+  :root {
+    --face: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --ink: #ffffff;
+    --muted: #9dbbdd;
+    --teal: #2ee6c5;
+    --cyan: #22d3ee;
+    --line: rgba(120, 180, 255, 0.28);
+    --card: rgba(255, 255, 255, 0.045);
+  }
+
+  body {
+    width: 1536px;
+    height: 1024px;
+    overflow: hidden;
+    position: relative;
+    font-family: var(--face);
+    color: var(--ink);
+    background: #061229;
+  }
+
+  /* The field: the navy of the profile banner with a blue glow bleeding in
+     from the right, over a faint grid that gives the flat colour some depth. */
+  .field, .grid, .glow { position: absolute; inset: 0; }
+  .field { background: linear-gradient(115deg, #061229 0%, #071a35 52%, #0b2247 100%); }
+  .grid {
+    background:
+      repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 96px),
+      repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 96px);
+    opacity: 0.20;
+    mask-image: linear-gradient(100deg, transparent 18%, #000 78%);
+  }
+  .glow {
+    background:
+      radial-gradient(760px 760px at 108% 46%, rgba(46, 142, 255, 0.62) 0%,
+                      rgba(40, 120, 240, 0.20) 44%, transparent 70%),
+      radial-gradient(520px 420px at 86% 92%, rgba(46, 230, 197, 0.10) 0%, transparent 70%);
+  }
+
+  .sheet {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    gap: 56px;
+    padding: 76px 72px;
+  }
+
+  /* ---- left: what this project is ---- */
+  .say {
+    width: 720px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    /* Stretched by .sheet to the full padded height. The headline, the claim,
+       the stages and the chips sit packed together at their own margins below,
+       and only .aut's auto top margin absorbs the leftover height, pushing it
+       to the bottom — one deliberate gap instead of `justify-content:
+       space-between` smearing that same leftover space across all of them,
+       which reads as dead air between the claim and the chips. */
+  }
+
+  h1 {
+    font-size: 88px;
+    font-weight: 900;
+    line-height: 1.02;
+    letter-spacing: -0.028em;
+    /* Three lines, one word group each, and readable when the profile shrinks
+       the cover to a thumbnail: at 320px wide this is still around 17px tall.
+       The size also leaves the longest of the three, "Web Scraping", room on a
+       face wider than the one here, so a render on another machine does not
+       wrap a line in two. */
+  }
+  h1 .second { display: block; }
+
+  .claim {
+    margin-top: 30px;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.32;
+    letter-spacing: -0.005em;
+    max-width: 650px;
+    background: linear-gradient(92deg, var(--teal), var(--cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* The pipeline, in the order it runs. One line, so the arrows read as a
+     sequence rather than as a list that happens to be in an order — and set
+     large and bright enough to survive the thumbnail the profile shows, where
+     the chips and the footnote below it are already only texture. */
+  .stages {
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    font-size: 25px;
+    font-weight: 800;
+    color: #eaf4ff;
+    white-space: nowrap;
+  }
+  .stages i { font-style: normal; color: var(--teal); font-weight: 800; }
+
+  .chips {
+    margin-top: 34px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 13px;
+    max-width: 700px;
+  }
+  .chip {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 21px 11px;
+    font-size: 23px;
+    font-weight: 600;
+    color: #dcebff;
+    background: rgba(9, 28, 58, 0.55);
+  }
+
+  .aut {
+    margin-top: auto;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 660px;
+  }
+  .aut b { color: #cfe3fb; font-weight: 700; }
+
+  /* ---- right: the three sources, and what they add up to ---- */
+  .stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 34px;
+    justify-content: space-between;
+    /* Same stretch-and-spread as .say: the gap is a floor between cards, and
+       any height left over after it is spent pushing the badge to the bottom
+       of the field instead of leaving it tucked under the cards. */
+  }
+
+  .card {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 32px 30px;
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    background: var(--card);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .mark {
+    flex: none;
+    width: 88px;
+    height: 88px;
+    border: 1px solid rgba(120, 180, 255, 0.34);
+    border-radius: 24px;
+    display: grid;
+    place-items: center;
+    background: rgba(12, 36, 72, 0.6);
+    color: var(--teal);
+  }
+  .card:nth-child(2) .mark { color: #6cc4ff; }
+  .card:nth-child(3) .mark { color: var(--cyan); }
+  .mark svg { width: 46px; height: 46px; display: block; }
+
+  .what { flex: 1; }
+  .what .layer {
+    display: block;
+    font-size: 29px;
+    font-weight: 900;
+    letter-spacing: -0.012em;
+  }
+  /* One line each: a note that wraps pushes its card taller than its
+     neighbours, and the three cards only read as one stack while they
+     are the same height. */
+  .what .note { display: block; margin-top: 7px; font-size: 21px; color: var(--muted); white-space: nowrap; }
+
+  .count { flex: none; text-align: right; min-width: 118px; }
+  .count .n {
+    display: block;
+    font-size: 54px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: #eaf4ff;
+    font-variant-numeric: tabular-nums;
+  }
+  .count .u {
+    display: block;
+    margin-top: 5px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7fa7d1;
+  }
+
+  /* The badge carries the two counts that are not a source: what the three
+     cards add up to in one full run, and how many sources that is. */
+  .total {
+    align-self: flex-end;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 32px 22px 26px;
+    border: 1px solid rgba(46, 230, 197, 0.55);
+    border-radius: 22px;
+    background: rgba(9, 48, 44, 0.45);
+  }
+  .total > svg { width: 42px; height: 42px; color: var(--teal); flex: none; }
+  .total .rows { display: block; }
+  .total .big { display: block; font-size: 34px; font-weight: 900; line-height: 1.1; letter-spacing: -0.02em;
+                white-space: nowrap; }
+  .total .small { display: block; margin-top: 5px; font-size: 21px; font-weight: 700; color: #a9f3e4;
+                  white-space: nowrap; }
+  .total .stat-n { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div class="field"></div>
+  <div class="grid"></div>
+  <div class="glow"></div>
+
+  <div class="sheet">
+    <div class="say">
+      <h1>Web Scraping<span class="second">Automation</span><span class="second">Framework</span></h1>
+      <p class="claim">Three sources, one pipeline &mdash; and a report that says
+        what changed since last night</p>
+
+      <p class="stages">validate <i>&rarr;</i> normalise <i>&rarr;</i> snapshot
+        <i>&rarr;</i> diff <i>&rarr;</i> report</p>
+
+      <div class="chips">
+        <span class="chip">Python 3.12</span>
+        <span class="chip">httpx</span>
+        <span class="chip">selectolax</span>
+        <span class="chip">Playwright</span>
+        <span class="chip">SQLAlchemy</span>
+        <span class="chip">FastAPI</span>
+        <span class="chip">pytest</span>
+        <span class="chip">Allure</span>
+        <span class="chip">GitHub Actions</span>
+      </div>
+
+      <p class="aut">Scraped: <b>books.toscrape.com</b> and
+        <b>quotes.toscrape.com</b>, the public practice sites &mdash; and a demo
+        store that ships inside this repository, so there is always something
+        that moves.</p>
+    </div>
+
+    <div class="stack">
+      <div class="card stat">
+        <span class="mark" aria-hidden="true">
+          <!-- request out, response back: an exchange over plain HTTP -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8.5h14"/><path d="M13.5 5l3.5 3.5-3.5 3.5"/>
+            <path d="M21 15.5H7"/><path d="M10.5 12L7 15.5l3.5 3.5"/>
+          </svg>
+        </span>
+        <span class="what">
+          <span class="layer stat-of">books.toscrape.com</span>
+          <span class="note">Static HTML, over a polite client</span>
+        </span>
+        <span class="count"><span class="n stat-n">1000</span><span class="u stat-u">books</span></span>
+      </div>
+
+      <div class="card stat">
+        <span class="mark" aria-hidden="true">
+          <!-- a browser window: a page that is empty until its script runs -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.75" y="4.25" width="18.5" height="15.5" rx="2.5"/>
+            <path d="M2.75 9.25h18.5"/>
+            <circle cx="6" cy="6.75" r="0.75" fill="currentColor" stroke="none"/>
+            <circle cx="8.75" cy="6.75" r="0.75" fill="currentColor" stroke="none"/>
+            <circle cx="11.5" cy="6.75" r="0.75" fill="currentColor" stroke="none"/>
+            <path d="M6 13h7"/><path d="M6 16.25h11"/>
+          </svg>
+        </span>
+        <span class="what">
+          <span class="layer stat-of">quotes.toscrape.com</span>
+          <span class="note">Rendered first, in a real browser</span>
+        </span>
+        <span class="count"><span class="n stat-n">100</span><span class="u stat-u">quotes</span></span>
+      </div>
+
+      <div class="card stat">
+        <span class="mark" aria-hidden="true">
+          <!-- a shelf of goods: the demo store this repository ships -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.25 8.25h17.5v11.5H3.25z"/>
+            <path d="M3.25 8.25L5 4.25h14l1.75 4"/>
+            <path d="M9.5 12h5"/>
+          </svg>
+        </span>
+        <span class="what">
+          <span class="layer stat-of">the demo store</span>
+          <span class="note">Ships here, and moves every day</span>
+        </span>
+        <span class="count"><span class="n stat-n">40</span><span class="u stat-u">products</span></span>
+      </div>
+
+      <div class="total">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <circle cx="12" cy="12" r="9.25"/><path d="M7.75 12.4l3 3 5.5-6.2"/>
+        </svg>
+        <span class="rows">
+          <span class="big stat"><b class="stat-n">1140</b>
+            <span class="stat-u">records</span>
+            <span class="stat-of">in one full run</span></span>
+          <span class="small stat"><b class="stat-n">3</b>
+            <span class="stat-u">sources</span>, <span class="stat-of">one pipeline</span></span>
+        </span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

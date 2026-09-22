@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1016" width="900" height="1016"
+     role="img" aria-labelledby="ci-title ci-desc"
+     font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <title id="ci-title">What CI does: the gate, the night, and what travels between them</title>
+  <desc id="ci-desc">Two lanes and one box underneath them. The left lane is the gate, which every push and every pull request runs and which never touches the network: ruff over src, tests, showcase and scripts; then the checks that need no site — pure logic, parsing of pages saved from the real sites, and the pipeline against a real SQLite file; then the browser check, 12 cases driving Chromium against the demo store this repository starts itself. Both jobs upload their Allure results. The right lane is the night, started by the schedule (cron 0 5 * * *) or by a manual run with the publish box ticked, and only once the gate is green: probe both practice sites and record what each answered; restore the database from the last publication; scrape every source that answered, export the snapshots and record the scroll of the demo store; run the live checks, 3 cases against the real sites, where a red one is the drift signal and is not allowed to stop the night; then, on the main branch only, merge every job's results, generate the Allure report with the history carried over, build the page and force-push the whole site to gh-pages. The box underneath is the database itself, carried from one night to the next through gh-pages: it holds 30 nights per source, which is what gives a nightly diff a yesterday to compare with, and the restore step pulls it back down before the next scrape.</desc>
+
+  <!-- The figure is referenced through <img>, so it cannot inherit a colour
+       from the host page: it carries its own light plate and dark ink, and
+       reads the same in a light and a dark theme. -->
+  <style>
+    .plate { fill: #ffffff; }
+    .zone  { fill: #f3f2ef; }
+    .box   { fill: #ffffff; stroke: #222a32; stroke-width: 1.6; }
+    .emph  { fill: #e9eef4; stroke: #12161b; stroke-width: 2.6; }
+    .lab   { fill: #47525d; font-size: 12px; font-weight: 600; letter-spacing: .09em;
+             paint-order: stroke; stroke: #f3f2ef; stroke-width: 5px; stroke-linejoin: round; }
+    .h     { fill: #12161b; font-size: 17px; font-weight: 650; }
+    .sub   { fill: #47525d; font-size: 12.5px; }
+    .t2    { fill: #12161b; font-size: 13.5px; font-weight: 650; }
+    .b     { fill: #12161b; font-size: 13px; }
+    .m     { fill: #47525d; font-size: 12.5px; }
+    .arrow { stroke: #222a32; stroke-width: 1.8; fill: none; marker-end: url(#head); }
+    .carry { stroke: #12161b; stroke-width: 2.6; fill: none; marker-end: url(#head-big); }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0.5 L9,5 L0,9.5 z" fill="#222a32"/>
+    </marker>
+    <marker id="head-big" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.6" markerHeight="4.6" orient="auto-start-reverse">
+      <path d="M0,0.5 L9,5 L0,9.5 z" fill="#12161b"/>
+    </marker>
+  </defs>
+
+  <rect class="plate" x="0" y="0" width="900" height="1016"/>
+
+  <text class="h"   x="24" y="32">What CI does with every change, and what it does at night</text>
+  <text class="sub" x="24" y="54">The gate never touches the network. The night is the only run that reaches the practice sites — and the only one that publishes.</text>
+
+  <!-- ================= lane 1: the gate ================= -->
+  <rect class="zone" x="24" y="78" width="400" height="520" rx="10"/>
+
+  <rect class="box" x="40" y="112" width="368" height="92" rx="8"/>
+  <text class="t2" x="224" y="140" text-anchor="middle">ruff check</text>
+  <text class="b"  x="224" y="164" text-anchor="middle">src · tests · showcase · scripts</text>
+  <text class="m"  x="224" y="188" text-anchor="middle">one rule set over everything, tests included</text>
+
+  <rect class="box" x="40" y="230" width="368" height="120" rx="8"/>
+  <text class="t2" x="224" y="258" text-anchor="middle">the checks that need no site</text>
+  <text class="b"  x="224" y="282" text-anchor="middle">pytest -m "unit or parsers or integration"</text>
+  <text class="m"  x="224" y="306" text-anchor="middle">pure logic · pages saved from the real sites ·</text>
+  <text class="m"  x="224" y="324" text-anchor="middle">the pipeline against a real SQLite file</text>
+  <text class="m"  x="224" y="342" text-anchor="middle">nothing here asks anyone for anything</text>
+
+  <rect class="box emph" x="40" y="376" width="368" height="120" rx="8"/>
+  <text class="t2" x="224" y="404" text-anchor="middle">the browser check</text>
+  <text class="b"  x="224" y="428" text-anchor="middle">pytest -m e2e</text>
+  <text class="b"  x="224" y="450" text-anchor="middle">12 cases</text>
+  <text class="m"  x="224" y="472" text-anchor="middle">Chromium against the demo store, which this</text>
+  <text class="m"  x="224" y="490" text-anchor="middle">repository starts itself — still no live site</text>
+
+  <rect class="box" x="40" y="522" width="368" height="64" rx="8"/>
+  <text class="t2" x="224" y="548" text-anchor="middle">both jobs upload their allure-results</text>
+  <text class="m"  x="224" y="572" text-anchor="middle">so the night can report on the whole suite, not its own leg</text>
+
+  <path class="arrow" d="M224,204 L224,226"/>
+  <path class="arrow" d="M224,350 L224,372"/>
+  <path class="arrow" d="M224,496 L224,518"/>
+
+  <!-- ================= lane 2: the night ================= -->
+  <rect class="zone" x="452" y="78" width="424" height="810" rx="10"/>
+
+  <rect class="box" x="468" y="112" width="392" height="108" rx="8"/>
+  <text class="t2" x="664" y="140" text-anchor="middle">what starts it</text>
+  <text class="b"  x="664" y="164" text-anchor="middle">cron 0 5 * * *</text>
+  <text class="m"  x="664" y="188" text-anchor="middle">or a manual run with the publish box ticked</text>
+  <text class="m"  x="664" y="208" text-anchor="middle">and, either way, only once the gate is green</text>
+
+  <rect class="box" x="468" y="244" width="392" height="104" rx="8"/>
+  <text class="t2" x="664" y="272" text-anchor="middle">probe the practice sites</text>
+  <text class="m"  x="664" y="296" text-anchor="middle">curl asks each one for a status code</text>
+  <text class="m"  x="664" y="316" text-anchor="middle">what does not answer is skipped for the night,</text>
+  <text class="m"  x="664" y="336" text-anchor="middle">with what it did answer recorded as the reason</text>
+
+  <rect class="box" x="468" y="372" width="392" height="100" rx="8"/>
+  <text class="t2" x="664" y="400" text-anchor="middle">restore the database</text>
+  <text class="b"  x="664" y="424" text-anchor="middle">scripts/restore-db.sh</text>
+  <text class="m"  x="664" y="446" text-anchor="middle">without it every night is a first night and</text>
+  <text class="m"  x="664" y="464" text-anchor="middle">every record is reported as added</text>
+
+  <rect class="box emph" x="468" y="496" width="392" height="120" rx="8"/>
+  <text class="t2" x="664" y="524" text-anchor="middle">scrape what answered, and keep it</text>
+  <text class="b"  x="664" y="548" text-anchor="middle">scrapewatch scrape all --export-dir</text>
+  <text class="m"  x="664" y="572" text-anchor="middle">the snapshots are exported as CSV and JSON</text>
+  <text class="m"  x="664" y="590" text-anchor="middle">record-scroll leaves the video of the demo</text>
+  <text class="m"  x="664" y="608" text-anchor="middle">store's infinite scroll, and the trace of it</text>
+
+  <rect class="box" x="468" y="640" width="392" height="100" rx="8"/>
+  <text class="t2" x="664" y="668" text-anchor="middle">the live checks</text>
+  <text class="b"  x="664" y="692" text-anchor="middle">pytest -m live</text>
+  <text class="b"  x="664" y="714" text-anchor="middle">3 cases</text>
+  <text class="m"  x="664" y="734" text-anchor="middle">a red one is drift, and never stops the night</text>
+
+  <rect class="box" x="468" y="764" width="392" height="108" rx="8"/>
+  <text class="t2" x="664" y="792" text-anchor="middle">publish, on the main branch only</text>
+  <text class="m"  x="664" y="816" text-anchor="middle">merge every job's results · Allure with the history</text>
+  <text class="m"  x="664" y="834" text-anchor="middle">carried over · showcase/build.py builds the page</text>
+  <text class="m"  x="664" y="856" text-anchor="middle">the whole site is force-pushed to gh-pages</text>
+
+  <path class="arrow" d="M664,220 L664,240"/>
+  <path class="arrow" d="M664,348 L664,368"/>
+  <path class="arrow" d="M664,472 L664,492"/>
+  <path class="arrow" d="M664,616 L664,636"/>
+  <path class="arrow" d="M664,740 L664,760"/>
+
+  <!-- ================= what travels between the nights ================= -->
+  <rect class="box" x="24" y="908" width="852" height="88" rx="8"/>
+  <text class="t2" x="450" y="936" text-anchor="middle">the database, carried from one night to the next</text>
+  <text class="b"  x="450" y="960" text-anchor="middle">30 nights per source</text>
+  <text class="m"  x="450" y="982" text-anchor="middle">published with the data, pulled back down before the next scrape — the only reason a nightly diff has a yesterday</text>
+
+  <path class="arrow" d="M664,872 L664,904"/>
+  <path class="carry" d="M438,908 L438,422 L464,422"/>
+
+  <!-- Painted last, over a knockout of the lane's own fill: a connector that
+       crosses a word passes behind it rather than through it. -->
+  <text class="lab" x="40" y="100">THE GATE — EVERY PUSH AND EVERY PULL REQUEST</text>
+  <text class="lab" x="468" y="100">THE NIGHT — AND THE ONLY RUN THAT PUBLISHES</text>
+</svg>

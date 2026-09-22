@@ -238,6 +238,26 @@ def test_the_lede_says_so_when_a_source_did_not_answer(
     assert "whatever did not answer is named, with its reason, below" in prose
 
 
+def test_the_lede_does_not_call_a_partial_run_all_the_sources(
+    results: Path, tmp_path: Path
+) -> None:
+    """"All N sources" is a claim about every source this project scrapes, so it is
+    only true when the run carries all of them. A `run-stats.json` with two of the
+    three and nothing skipped used to be published as "all 2 sources", which reads
+    as a complete night and is not one."""
+    _write_run(
+        tmp_path / "run",
+        stats={
+            "quotes": _source_stats(records=100, pages=10),
+            "demo": _source_stats(records=40, pages=4, requests=5),
+        },
+        changes={"demo": {"added": 0, "removed": 0, "changed": 7, "changes": []}},
+    )
+    prose = _prose(_page(results, tmp_path / "run", tmp_path))
+    assert "collected from 2 of the 3 sources this project scrapes" in prose
+    assert "all 2 sources" not in prose
+
+
 def test_a_run_with_nothing_skipped_says_nothing_about_skipping(
     results: Path, run_dir: Path, tmp_path: Path
 ) -> None:
@@ -614,6 +634,22 @@ def test_a_skipped_live_check_is_not_reported_as_a_red_one(
     assert "failed in this run" not in prose
     assert "1 of the 2 checks against the real practice sites did not run" in prose
     assert "none of the ones that did failed" in prose
+
+
+def test_the_one_live_check_that_did_not_run_is_said_in_the_singular(
+    run_dir: Path, tmp_path: Path
+) -> None:
+    """The sentence written for a plural reads as nonsense over a 1 — "1 of the 1
+    checks did not run" — and a publication whose only live check was skipped is
+    exactly the night a reader needs told plainly."""
+    results = tmp_path / "results"
+    results.mkdir()
+    _result(results, "a", "passed", "tests.unit.test_diff", ["unit"])
+    _result(results, "e", "skipped", "tests.live.test_books_live", ["live"])
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "The one check against the real practice sites did not run" in prose
+    assert "1 of the 1 checks" not in prose
+    assert "failed in this run" not in prose
 
 
 def test_a_broken_live_check_is_red_like_a_failed_one(

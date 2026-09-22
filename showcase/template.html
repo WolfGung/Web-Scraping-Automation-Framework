@@ -533,11 +533,18 @@
 <!--[else live_red]-->
 <!--[if live_skipped]-->
     <p>
+<!--[if live_one]-->
+      The one check against the real practice sites did not run in this publication,
+      so this page makes no claim about the markup that parser was written for. A
+      check that was skipped is not a verdict on a site, which is why it is said
+      here rather than counted as a pass.
+<!--[else live_one]-->
       {{LIVE_SKIPPED}} of the {{LIVE}} checks against the real practice sites did
       not run in this publication, and none of the ones that did failed: the parsers
       still match the markup on everything that was actually reached. A check that
       was skipped is not a verdict on a site, which is why it is named rather than
       counted as a pass.
+<!--[end live_one]-->
     </p>
 <!--[else live_skipped]-->
     <p>

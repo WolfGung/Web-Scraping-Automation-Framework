@@ -669,8 +669,14 @@ def build_site(
         "data": any((out_dir / "data" / name).is_file() for name, _ in DATA_FILES),
         "skipped": bool(collection.skipped),
         # The lede used to say "records from three sources", which was a typed claim
-        # about a night in which one of them may not have answered at all.
-        "all_sources": bool(collection.sources) and not collection.skipped,
+        # about a night in which one of them may not have answered at all. It is a
+        # claim about *all* of them, so it is only true when the run carries every
+        # source this project scrapes: a `run-stats.json` holding two of the three,
+        # with neither skipped, used to be published as "all 2 sources", which reads
+        # as a complete night and is not one.
+        "all_sources": (
+            len(collection.sources) == len(SOURCE_LABELS) and not collection.skipped
+        ),
         "parse_errors": collection.parse_errors > 0,
         "retries": collection.retries > 0,
         "changes_found": collection.changes > 0,
@@ -716,7 +722,10 @@ def build_site(
             "PARSE_ERRORS": _text(collection.parse_errors),
             "SECONDS": _text(_seconds(collection.seconds)),
             "COLLECTED": _text(len(collection.sources) - len(collection.skipped)),
-            "SOURCES": _text(len(collection.sources)),
+            # "the sources this project scrapes" is a fact about the project, not
+            # about the night: a run that only carries two of them is two of three,
+            # not two of two.
+            "SOURCES": _text(len(SOURCE_LABELS)),
             "SOURCE_ROWS": _source_rows(collection),
             "SKIPPED_PROSE": _skipped_prose(collection),
             "CHANGES_PROSE": _changes_prose(collection),
