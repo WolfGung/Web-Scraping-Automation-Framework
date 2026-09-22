@@ -103,16 +103,6 @@ class Run:
     id: int
 
 
-@dataclass(frozen=True)
-class Snapshot:
-    """An opaque handle to a saved snapshot."""
-
-    id: int
-    source: str
-    taken_at: datetime
-    record_count: int
-
-
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -167,6 +157,23 @@ def _dump_value(value: Any, field_name: str) -> str | None:
     return json.dumps(_encode_value(value, field_name))
 
 
+#: What a spreadsheet reads as the start of a formula rather than as text.
+_FORMULA_STARTS = ("=", "+", "-", "@")
+
+
+def _csv_safe(value: Any) -> Any:
+    """One cell, made safe to open in a spreadsheet. Non-text values pass through.
+
+    Only text can start a formula here: a `Decimal` or an `int` is written by `csv`
+    as digits, and a leading `-` on a number is a minus sign, not an injection — so
+    the guard is applied to strings, where the leading character came from a page
+    this project scraped.
+    """
+    if isinstance(value, str) and value.startswith(_FORMULA_STARTS):
+        return f"'{value}"
+    return value
+
+
 def _row_to_record(row: RecordRow) -> Record:
     return Record(
         source=row.source,
@@ -211,7 +218,13 @@ class Storage:
             session.commit()
             return Run(id=row.id)
 
-    def save_snapshot(self, run: Run, source: str, records: list[Record]) -> Snapshot:
+    def save_snapshot(self, run: Run, source: str, records: list[Record]) -> None:
+        """Write one snapshot of `source` and its records. Nothing is handed back.
+
+        A snapshot is never addressed by id from outside: everything that reads one
+        goes through `latest_snapshots`, which is the only ordering that matters
+        here. A handle nobody holds is a shape to keep in step for nothing.
+        """
         with self._session() as session:
             taken_at = _now_iso()
             snapshot_row = SnapshotRow(run_id=run.id, source=source, taken_at=taken_at, record_count=len(records))
@@ -231,8 +244,6 @@ class Storage:
                     )
                 )
             session.commit()
-            return Snapshot(id=snapshot_row.id, source=source, taken_at=datetime.fromisoformat(taken_at),
-                             record_count=len(records))
 
     def latest_snapshots(self, source: str, n: int = 2) -> list[list[Record]]:
         """The `n` most recent snapshots of `source`, newest first."""
@@ -311,17 +322,22 @@ class Storage:
         Only the last two snapshots are ever diffed, so the rest are history, and a
         bounded history is the one that keeps being publishable.
 
-        `keep` must be at least 1: pruning to zero would delete the snapshot the run
-        just took, which is the one the next diff needs.
+        `keep` must be at least 2, because that is what a diff is: this run's snapshot
+        and the one before it. Keeping one would leave the next run nothing to compare
+        against and quietly turn a change-detection tool into a collector — and
+        keeping none would delete the snapshot the run just took.
 
         The ids are read and sliced in Python rather than handed to `OFFSET` without
         a `LIMIT`, which the two supported dialects spell differently; there is one
         snapshot per source per run, so the list is nightly-sized either way. The
         `changes` table is not touched: its rows belong to runs, not to snapshots,
         and they are the record of what was found rather than a copy of the data.
+
+        Deleting rows does not shrink a SQLite file — that is `vacuum()`, which the
+        caller runs once after pruning every source rather than once per source.
         """
-        if keep < 1:
-            raise ValueError(f"keep: must be at least 1, got {keep}")
+        if keep < 2:
+            raise ValueError(f"keep: must be at least 2 — a diff compares two snapshots — got {keep}")
         with self._session() as session:
             ids = list(
                 session.scalars(
@@ -334,21 +350,41 @@ class Storage:
             session.execute(delete(RecordRow).where(RecordRow.snapshot_id.in_(doomed)))
             session.execute(delete(SnapshotRow).where(SnapshotRow.id.in_(doomed)))
             session.commit()
-
-        if self._db_url.startswith("sqlite"):
-            # Deleting rows from SQLite leaves the file exactly as large as it was;
-            # the space is reused by later writes but never returned. The file is
-            # published, so its size on disk is the size of somebody's download, and
-            # VACUUM is what actually shrinks it. It cannot run inside a
-            # transaction, hence a connection of its own in autocommit. PostgreSQL
-            # has autovacuum and no file to publish, so it is left alone.
-            assert self._engine is not None  # guaranteed by _session() above
-            with self._engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-                connection.execute(text("VACUUM"))
         return len(doomed)
 
+    def vacuum(self) -> None:
+        """Return the space `prune` freed to the filesystem. SQLite only, once per run.
+
+        Deleting rows from SQLite leaves the file exactly as large as it was; the
+        space is reused by later writes but never given back. The file is published
+        every night, so its size on disk is the size of somebody's download, and
+        VACUUM is what actually shrinks it. It cannot run inside a transaction, hence
+        a connection of its own in autocommit.
+
+        Once per run, not once per source: VACUUM rewrites the whole database, so
+        running it after each source's prune rewrote the file three times to produce
+        the state the third pass would have produced anyway. PostgreSQL has
+        autovacuum and no file to publish, so it is left alone.
+        """
+        if not self._db_url.startswith("sqlite"):
+            return
+        if self._engine is None:
+            raise RuntimeError("Storage.open() must be called before use")
+        with self._engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            connection.execute(text("VACUUM"))
+
     def export(self, source: str, fmt: Literal["csv", "json"], path: str | Path) -> None:
-        """Write the latest snapshot of `source`, sorted by `external_id`, so repeat exports match byte for byte."""
+        """Write the latest snapshot of `source`, sorted by `external_id`, so repeat exports match byte for byte.
+
+        A CSV cell whose text begins with `=`, `+`, `-` or `@` is prefixed with a
+        single quote on the way out. Spreadsheets read those four as the start of a
+        formula, and this file is published for anyone to download and open: a book
+        titled `=1+1` would be a cell that computes, and the same trick with a
+        `HYPERLINK` or a `WEBSERVICE` call is how a scraped catalogue turns into
+        somebody else's problem. The quote is the convention every spreadsheet
+        understands for "this is text"; the JSON export carries the original, because
+        nothing evaluates JSON.
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -368,7 +404,7 @@ class Storage:
             with path.open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(handle, fieldnames=header)
                 writer.writeheader()
-                writer.writerows(rows)
+                writer.writerows({key: _csv_safe(value) for key, value in row.items()} for row in rows)
         elif fmt == "json":
             path.write_text(json.dumps(rows, default=str, indent=2), encoding="utf-8")
         else:

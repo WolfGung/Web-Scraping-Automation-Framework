@@ -17,6 +17,13 @@ on:
         type: boolean
         default: false
 
+# Read-only by default, everywhere. Only the job that publishes the page needs to
+# write to this repository, and it asks for that itself (`showcase`, below); every
+# other job here checks out, installs and runs tests. A token no job needs is a
+# token no job should have.
+permissions:
+  contents: read
+
 jobs:
   gate:
     name: Lint, unit, parsers, integration

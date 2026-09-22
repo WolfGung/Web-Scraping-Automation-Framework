@@ -58,6 +58,11 @@ _BASE_PRODUCTS: tuple[tuple[int, str, int, int], ...] = (
     (40, "Nectar Honey Dipper", 449, 27),
 )
 
+#: How many products the store has. Counted from the list above rather than typed
+#: again: the API states this as its `total`, and a second copy is a number that goes
+#: wrong the first time a product is added.
+TOTAL_PRODUCTS = len(_BASE_PRODUCTS)
+
 #: Percent range (inclusive) a repriced product moves, up or down, chosen per product.
 _PRICE_ADJUST_RANGE_PCT = (5, 15)
 _PRODUCTS_ADJUSTED_PER_DAY = 6

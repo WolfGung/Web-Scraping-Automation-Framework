@@ -68,6 +68,8 @@ EXPORT_FORMATS: dict[str, tuple[str, ...]] = {"books": ("csv", "json"), "quotes"
 #: How many snapshots per source the database keeps by default. The file is
 #: published every night, so its history is bounded on purpose; the page states the
 #: same number, and `tests/unit/test_showcase_build.py` pins the two together.
+#: `Storage.prune` refuses anything below 2, because two snapshots are what a diff
+#: is: tonight's and the one it is compared against.
 DEFAULT_KEEP_SNAPSHOTS = 30
 
 #: The numeric shape every entry of `run-stats.json` has, so a source that never ran
@@ -225,7 +227,9 @@ def scrape(
         None, "--export-dir", help="Export every source that collected something into this directory."
     ),
     keep_snapshots: int = typer.Option(
-        DEFAULT_KEEP_SNAPSHOTS, "--keep-snapshots", help="Snapshots kept per source; older ones are deleted."
+        DEFAULT_KEEP_SNAPSHOTS,
+        "--keep-snapshots",
+        help="Snapshots kept per source; older ones are deleted. At least 2, which is what a diff needs.",
     ),
 ) -> None:
     """Fetch one source (or all of them), snapshot it, diff it against the last run, and report.
@@ -277,6 +281,11 @@ def scrape(
         stats = _stats_with_caller_skips(result.stats, skips)
         _write_run_stats(out, stats)
         pruned = sum(storage.prune(name, keep_snapshots) for name, body in stats.items() if not body["skipped"])
+        if pruned:
+            # Once, after every source: VACUUM rewrites the whole file, so running it
+            # per source rewrote it three times to reach the state the last pass
+            # would have reached anyway.
+            storage.vacuum()
         exported = _export_collected(storage, stats, export_dir) if export_dir is not None else []
     except Exception as exc:  # a bad --db-url or a run that never produced a result: report it, don't crash
         typer.echo(f"scrape failed: {exc}", err=True)

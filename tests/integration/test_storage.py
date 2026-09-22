@@ -76,6 +76,29 @@ def test_an_unknown_stock_count_round_trips_as_none_not_zero(storage: Storage) -
     assert latest[0].fields["stock"] is None
 
 
+def test_a_csv_cell_cannot_start_a_formula(storage: Storage, tmp_path: Path) -> None:
+    """The exports are published for anyone to download and open in a spreadsheet.
+
+    Four characters start a formula there, and the text in these cells came off
+    somebody else's page: a title of `=1+1` would compute, and the same trick with
+    `HYPERLINK` or `WEBSERVICE` reaches further than that. The leading quote is the
+    convention every spreadsheet reads as "this is text". JSON carries the original,
+    because nothing evaluates JSON.
+    """
+    run = storage.start_run(["demo"])
+    storage.save_snapshot(run, "demo", [_rec("1", name="=1+1", note="@SUM(A1)", price=Decimal("-10"))])
+
+    storage.export("demo", "csv", tmp_path / "demo.csv")
+    storage.export("demo", "json", tmp_path / "demo.json")
+
+    row = next(iter(csv.DictReader((tmp_path / "demo.csv").read_text(encoding="utf-8").splitlines())))
+    assert row["name"] == "'=1+1" and row["note"] == "'@SUM(A1)"
+    # A negative number is a number, not an injection: it is written by `csv` from a
+    # Decimal, and quoting it would make the column unreadable as data.
+    assert row["price"] == "-10"
+    assert json.loads((tmp_path / "demo.json").read_text(encoding="utf-8"))[0]["name"] == "=1+1"
+
+
 def test_export_writes_an_empty_cell_for_a_none_field(storage: Storage, tmp_path: Path) -> None:
     r1 = storage.start_run(["demo"])
     storage.save_snapshot(r1, "demo", [_rec("1", name="Widget", stock=None)])
@@ -167,10 +190,10 @@ def test_prune_takes_the_records_of_a_dropped_snapshot_with_it(storage: Storage)
         storage.save_snapshot(run, "demo", [_rec("1", price=Decimal(price)), _rec("2", price=Decimal(price))])
         storage.finish_run(run, {})
 
-    storage.prune("demo", keep=1)
+    storage.prune("demo", keep=2)
 
     with Session(storage._engine) as session:
-        assert len(session.scalars(select(RecordRow.id)).all()) == 2
+        assert len(session.scalars(select(RecordRow.id)).all()) == 4
 
 
 def test_prune_leaves_another_sources_history_alone(storage: Storage) -> None:
@@ -180,8 +203,8 @@ def test_prune_leaves_another_sources_history_alone(storage: Storage) -> None:
         storage.save_snapshot(run, "books", [_rec("1", price=Decimal("10"))])
         storage.finish_run(run, {})
 
-    assert storage.prune("demo", keep=1) == 2
-    assert _snapshot_count(storage, "demo") == 1
+    assert storage.prune("demo", keep=2) == 1
+    assert _snapshot_count(storage, "demo") == 2
     assert _snapshot_count(storage, "books") == 3
 
 
@@ -194,15 +217,40 @@ def test_prune_with_nothing_to_drop_changes_nothing(storage: Storage) -> None:
     assert _snapshot_count(storage) == 1
 
 
-def test_prune_refuses_to_delete_the_snapshot_the_next_diff_needs(storage: Storage) -> None:
-    """Keeping zero would delete the run's own snapshot, which is the one the next
-    run compares against — a retention that quietly disables change detection."""
+@pytest.mark.parametrize("keep", [0, 1])
+def test_prune_refuses_a_retention_that_leaves_nothing_to_diff(storage: Storage, keep: int) -> None:
+    """Two snapshots are what a diff is: tonight's, and the one it is compared against.
+
+    Keeping zero would delete the run's own snapshot; keeping one would leave the
+    next run nothing to compare it against. Both turn a change-detection tool into a
+    collector, quietly, one night later — so the retention refuses them by name.
+    """
     run = storage.start_run(["demo"])
     storage.save_snapshot(run, "demo", [_rec("1", price=Decimal("10"))])
 
-    with pytest.raises(ValueError, match="must be at least 1"):
-        storage.prune("demo", keep=0)
+    with pytest.raises(ValueError, match="must be at least 2"):
+        storage.prune("demo", keep=keep)
     assert _snapshot_count(storage) == 1
+
+
+def test_vacuum_shrinks_the_file_the_prune_emptied(storage: Storage, tmp_path: Path) -> None:
+    """Deleting rows from SQLite frees space inside the file and never gives it back.
+
+    The database is published, so its size on disk is the size of somebody's
+    download. `prune` does the deleting and `vacuum` is what actually returns the
+    space — once per run, after every source, because VACUUM rewrites the whole file.
+    """
+    for _ in range(6):
+        run = storage.start_run(["demo"])
+        storage.save_snapshot(run, "demo", [_rec(str(i), price=Decimal("10")) for i in range(200)])
+        storage.finish_run(run, {})
+
+    database = tmp_path / "test.sqlite3"
+    storage.prune("demo", keep=2)
+    after_prune = database.stat().st_size
+    storage.vacuum()
+
+    assert database.stat().st_size < after_prune
 
 
 def test_a_pruned_database_still_diffs_the_two_snapshots_it_kept(storage: Storage) -> None:

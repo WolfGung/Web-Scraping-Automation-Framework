@@ -21,10 +21,9 @@ from datetime import date
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
-from scrapewatch.demo_store.catalogue import catalogue_for, member_price_for
+from scrapewatch.demo_store.catalogue import TOTAL_PRODUCTS, catalogue_for, member_price_for
 
 PER_PAGE = 12
-TOTAL_PRODUCTS = 40
 SESSION_COOKIE = "demo_session"
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD = "demo"
@@ -149,9 +148,16 @@ def _product_card(product: dict, *, member_price: str | None = None) -> str:
 
 
 def _page_html(title: str, body: str) -> str:
+    """Wrap a page's body. The title is escaped for the same reason every field is.
+
+    Every title passed in here is a literal in this file today, so nothing can carry
+    markup — which is exactly the argument that stops being true the first time a
+    title is built from a query string or a product name. `_product_card` escapes on
+    that principle; the one element that did not was the `<title>`.
+    """
     return (
         "<!DOCTYPE html>"
-        f'<html lang="en"><head><meta charset="utf-8"><title>{title}</title></head>'
+        f'<html lang="en"><head><meta charset="utf-8"><title>{html.escape(title)}</title></head>'
         f"<body><header><p>{HEADER_LINE}</p></header>{body}</body></html>"
     )
 

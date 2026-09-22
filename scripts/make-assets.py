@@ -117,7 +117,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     origin as the images.
     """
 
-    def do_GET(self) -> None:  # noqa: N802 - the name is http.server's
+    def do_GET(self) -> None:  # the name is http.server's
         served = self._special()
         if served is None:
             super().do_GET()
@@ -129,7 +129,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_HEAD(self) -> None:  # noqa: N802 - the name is http.server's
+    def do_HEAD(self) -> None:  # the name is http.server's
         served = self._special()
         if served is None:
             super().do_HEAD()

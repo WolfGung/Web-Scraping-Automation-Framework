@@ -18,8 +18,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "ruff>=0.8", "pytest-rerunfailures>=15.0"]
+dev = ["pytest>=8.3", "ruff>=0.8"]
 postgres = ["psycopg[binary]>=3.2"]
+
+[project.urls]
+Homepage = "https://wolfgung.github.io/Web-Scraping-Automation-Framework/"
+Repository = "https://github.com/WolfGung/Web-Scraping-Automation-Framework"
 
 [project.scripts]
 scrapewatch = "scrapewatch.cli:app"

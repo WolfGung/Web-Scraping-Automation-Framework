@@ -90,7 +90,7 @@ class BrowserSession:
                 trace_path = Path(self._settings.trace_dir) / f"{self._trace_name}.zip"
                 try:
                     self._context.tracing.stop(path=str(trace_path))
-                except Exception as trace_exc:  # noqa: BLE001 - a recording must never fail the run
+                except Exception as trace_exc:  # a recording must never fail the run
                     warnings.warn(f"failed to stop tracing: {trace_exc}", stacklevel=2)
         finally:
             try:

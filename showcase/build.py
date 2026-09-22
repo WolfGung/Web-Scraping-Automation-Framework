@@ -344,12 +344,12 @@ def summarise(results_dir: Path) -> RunSummary:
 
     Allure writes one result file per *attempt*, so counting files would report
     three tests where two ran and would put a failure on the page beside a report
-    that shows none. The results published here are merged from three CI jobs and
-    `pytest-rerunfailures` is installed, so a second attempt at the same case is not
-    hypothetical: the files are grouped into tests first, and every figure the page
-    states is counted from the grouped tests. A test that needed a second attempt to
-    pass is counted as the pass it ended on and named separately as a flake, because
-    the run that hides its retries is the one nobody can trust.
+    that shows none. The results published here are merged from three CI jobs, and a
+    second attempt at one case is what a retried job or a rerun plugin produces, so
+    the files are grouped into tests first and every figure the page states is
+    counted from the grouped tests. A test that needed a second attempt to pass is
+    counted as the pass it ended on and named separately as a flake, because the run
+    that hides its retries is the one nobody can trust.
     """
     files = sorted(Path(results_dir).glob("*-result.json"))
     if not files:
