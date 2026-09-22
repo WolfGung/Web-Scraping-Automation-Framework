@@ -1,10 +1,32 @@
 # Web Scraping Automation Framework
 
 [![CI](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml)
+[![live report: Allure](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-ScrapeWatch collects three catalogues, stores every collection as a snapshot, compares tonight's with last night's, and publishes the data together with the difference. It runs itself every night and leaves the evidence where anyone can open it.
+ScrapeWatch is a scraping and change-monitoring project built from scratch for catalogue data: it collects three sites every night, compares each night's records against the night before, and publishes the data and the differences as files anyone can open.
+
+What is shown here is the full cycle of such a job: the rules the collection has to obey written down as code, a pipeline that validates and normalises every record before storing it, and a test suite that runs in CI on every push. The run is scheduled nightly, the collected data leaves as CSV and JSON, and the browser half is covered end to end — Chromium against a store this repository ships, down to its login. The data and the test report are both published, so everything claimed below can be checked without cloning anything.
+
+## Coverage
+
+| Marker | What it proves | Cases | Network |
+| --- | --- | --- | --- |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 222 | none |
+| `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
+| `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 27 | none |
+| `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
+| `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
+| the gate, `pytest -m "not live"` | the four rows above it | 268 | none |
+
+Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
+
+The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
+
+[![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
+
+That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
 
 [![The project cover. On the left, the title "Web Scraping Automation Framework" over the claim "Three sources, one pipeline - and a report that says what changed since last night", the pipeline written out as validate, normalise, snapshot, diff, report, and a row of the tools used. On the right, three cards: books.toscrape.com, static HTML over a polite client, 1000 books; quotes.toscrape.com, rendered first in a real browser, 100 quotes; the demo store, ships here and moves every day, 40 products. A badge underneath reads 1140 records in one full run, 3 sources, one pipeline.](guru-cover-image.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/)
 
@@ -95,25 +117,6 @@ That starts the demo store as a service, scrapes it from a second container, and
 docker compose --profile postgres run --rm scrape-pg
 docker compose --profile postgres down -v      # stop the store and the database, and drop the volumes
 ```
-
-## Coverage
-
-Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in this table cannot drift away from the suite it describes:
-
-| Marker | What it proves | Cases | Network |
-| --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 222 | none |
-| `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
-| `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 27 | none |
-| `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
-| `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 268 | none |
-
-The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
-
-[![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
-
-That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
 
 ## What it deliberately does not do
 
