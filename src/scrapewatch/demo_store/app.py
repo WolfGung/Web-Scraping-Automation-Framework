@@ -15,6 +15,7 @@ catalogue turns over naturally at midnight.
 """
 from __future__ import annotations
 
+import html
 from datetime import date
 
 from fastapi import FastAPI, Form, Request
@@ -33,13 +34,20 @@ HEADER_LINE = "ScrapeWatch demo store — a demo catalogue whose prices rotate d
 #: what it gets, and either fetches again immediately (the page is shorter than the
 #: viewport, so there is nothing to scroll yet) or waits for a `scroll` event within
 #: 200px of the bottom. An empty page marks the container `data-done="true"` — the
-#: end-of-stream signal a browser-driven source waits on.
+#: end-of-stream signal a browser-driven source waits on; a network or JSON error
+#: does the same plus `data-error="<message>"`, so a consumer polling `data-done`
+#: never hangs and can tell a normal end from a failed one. `loading` guards against
+#: a burst of `scroll` events re-firing the same request before the first one lands:
+#: it is set, and `page` is advanced past the page just requested, before `fetch` is
+#: even called, and only cleared in `.finally()` — after which, and not before, a
+#: page that still fits the viewport is allowed to trigger the next request.
 _SCROLL_SCRIPT = """
 <script>
 (function () {
   var container = document.getElementById("products");
   var page = 1;
   var done = false;
+  var loading = false;
 
   function renderProduct(p) {
     var article = document.createElement("article");
@@ -63,10 +71,15 @@ _SCROLL_SCRIPT = """
   }
 
   function loadNextPage() {
-    if (done) {
+    if (done || loading) {
       return;
     }
-    fetch("/api/products?page=" + page)
+    loading = true;
+    var requestedPage = page;
+    page += 1;
+    var sawItems = false;
+
+    fetch("/api/products?page=" + requestedPage)
       .then(function (response) { return response.json(); })
       .then(function (data) {
         if (data.items.length === 0) {
@@ -75,8 +88,16 @@ _SCROLL_SCRIPT = """
           return;
         }
         data.items.forEach(renderProduct);
-        page += 1;
-        if (fitsViewport()) {
+        sawItems = true;
+      })
+      .catch(function (error) {
+        done = true;
+        container.setAttribute("data-done", "true");
+        container.setAttribute("data-error", String((error && error.message) || error));
+      })
+      .finally(function () {
+        loading = false;
+        if (sawItems && fitsViewport()) {
           loadNextPage();
         }
       });
@@ -104,15 +125,24 @@ def _page_slice(items: list[dict], page: int) -> list[dict]:
 
 
 def _product_card(product: dict, *, member_price: str | None = None) -> str:
+    """Render one product's markup. Every catalogue-derived value is `html.escape`d.
+
+    The catalogue is fixed today, so nothing here can actually carry markup — but
+    `pipeline/report.py` escapes every rendered field on the same principle: the
+    data source, not today's content, is what a template has to assume nothing
+    about.
+    """
     stock_text = f"In stock ({product['stock']})" if product["in_stock"] else "Out of stock"
     member_html = (
-        f'<p class="member-price">Member price: {member_price}</p>' if member_price is not None else ""
+        f'<p class="member-price">Member price: {html.escape(member_price)}</p>'
+        if member_price is not None
+        else ""
     )
     return (
-        f'<article class="product" data-id="{product["id"]}">'
-        f'<h2 class="name">{product["name"]}</h2>'
-        f'<p class="price">{product["price"]}</p>'
-        f'<p class="stock">{stock_text}</p>'
+        f'<article class="product" data-id="{html.escape(str(product["id"]))}">'
+        f'<h2 class="name">{html.escape(product["name"])}</h2>'
+        f'<p class="price">{html.escape(product["price"])}</p>'
+        f'<p class="stock">{html.escape(stock_text)}</p>'
         f"{member_html}"
         f"</article>"
     )
@@ -127,7 +157,7 @@ def _page_html(title: str, body: str) -> str:
 
 
 def _login_page(*, failed: bool = False) -> str:
-    message = '<p class="error">Invalid username or password.</p>' if failed else ""
+    message = f'<p class="error">{html.escape("Invalid username or password.")}</p>' if failed else ""
     body = (
         f"{message}"
         '<form method="post" action="/login">'

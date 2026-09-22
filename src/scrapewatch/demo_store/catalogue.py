@@ -65,7 +65,7 @@ _STOCK_FLIPS_PER_DAY = 2
 
 
 def _format_price(cents: int) -> str:
-    """Cents to a `"$d.dd"` string. Formatted from an int throughout — no float drift."""
+    """An already-rounded cent amount as a `"$d.dd"` string."""
     return f"${cents // 100}.{cents % 100:02d}"
 
 
@@ -80,20 +80,25 @@ def member_price_for(price: str) -> str:
 
 
 @lru_cache
-def catalogue_for(today: date) -> list[dict]:
-    """The full 40-product catalogue as it stands on `today`.
+def _catalogue_for(ordinal: int) -> list[dict]:
+    """The cached computation, keyed by `date.toordinal()`. Callers use `catalogue_for`.
 
-    Deterministic and pure: seeded from `today.toordinal()`, so the same date always
-    produces the same list, and two different dates differ only in the handful of
-    products the seeded rule chose to touch that day. This is the mechanism the
-    published change report relies on to have something real, and reproducible, to
-    report — repeat the fetch on the same day and nothing new is announced.
+    Deterministic and pure: seeded from `ordinal`, so the same date always produces
+    the same list, and two different dates differ only in the handful of products
+    the seeded rule chose to touch that day. This is the mechanism the published
+    change report relies on to have something real, and reproducible, to report —
+    repeat the fetch on the same day and nothing new is announced. The price
+    adjustment below goes through float multiplication and is rounded to whole
+    cents, not integer arithmetic throughout.
 
     Each item carries exactly the fields `scrapewatch.sources.demo.DemoSource` and
     `normalize()`'s demo branch expect: `id`, `name`, `price` (a `"$d.dd"` string),
-    `in_stock` (a real bool) and `stock` (a real int, 0 when out of stock).
+    `in_stock` (a real bool) and `stock` (a real int, 0 when out of stock). Not for
+    outside use: these are the dicts `lru_cache` holds onto, so a caller that
+    mutates one would poison every future call for this date. `catalogue_for`
+    returns fresh copies instead.
     """
-    rng = random.Random(today.toordinal())
+    rng = random.Random(ordinal)
     product_ids = [product_id for product_id, _, _, _ in _BASE_PRODUCTS]
 
     adjusted_ids = set(rng.sample(product_ids, _PRODUCTS_ADJUSTED_PER_DAY))
@@ -108,6 +113,7 @@ def catalogue_for(today: date) -> list[dict]:
         if product_id in adjusted_ids:
             pct = rng.randint(*_PRICE_ADJUST_RANGE_PCT)
             sign = rng.choice((1, -1))
+            # Float multiplication, then rounded to whole cents — not integer math.
             price_cents = max(1, round(base_price_cents * (1 + sign * pct / 100)))
 
         if product_id in flipped_ids:
@@ -124,3 +130,14 @@ def catalogue_for(today: date) -> list[dict]:
             }
         )
     return catalogue
+
+
+def catalogue_for(today: date) -> list[dict]:
+    """The full 40-product catalogue as it stands on `today`, safe for a caller to mutate.
+
+    `_catalogue_for` does the deterministic work once per date and `lru_cache`s the
+    result; this wrapper rebuilds each item's dict on every call so that mutating a
+    returned product (as a caller reasonably might, e.g. to add a display-only field)
+    can never poison what a later call for the same date sees.
+    """
+    return [dict(item) for item in _catalogue_for(today.toordinal())]
