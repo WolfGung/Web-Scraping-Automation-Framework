@@ -106,14 +106,13 @@ def scrape(
         typer.echo(_unknown_source_message(source))
         raise typer.Exit(code=2)
 
-    storage = Storage(resolved_db_url)
-    storage.open()
-
     try:
+        storage = Storage(resolved_db_url)
+        storage.open()
         with PoliteClient(settings) as client, _browser_session_for(names, settings) as session:
             sources = _build_sources(names, client, session, max_pages=max_pages, demo_url=resolved_demo_url)
             result = run_sources(sources, storage, settings, out)
-    except Exception as exc:  # a run that never produced a result has nothing to report
+    except Exception as exc:  # a bad --db-url or a run that never produced a result: report it, don't crash
         typer.echo(f"scrape failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
@@ -125,7 +124,7 @@ def scrape(
         changes = _changes_in(result.report, name)
         typer.echo(
             f"{name}: {stats['records']} records, {stats['pages']} pages, {stats['requests']} requests, "
-            f"{stats['seconds']}s, {changes} changes"
+            f"{stats['seconds']:.2f}s, {changes} changes"
         )
 
     typer.echo(str(out / "run-stats.json"))
@@ -143,22 +142,28 @@ def report(
     settings = Settings()
     resolved_db_url = db_url if db_url is not None else settings.db_url
 
-    storage = Storage(resolved_db_url)
-    storage.open()
+    try:
+        storage = Storage(resolved_db_url)
+        storage.open()
 
-    changesets = {}
-    for name in KNOWN_SOURCES:
-        snapshots = storage.latest_snapshots(name, n=2)
-        if len(snapshots) < 2:
-            continue  # nothing to diff yet: fewer than two runs have snapshotted this source
-        newer, older = snapshots[0], snapshots[1]
-        changesets[name] = diff(older, newer)
+        changesets = {}
+        for name in KNOWN_SOURCES:
+            snapshots = storage.latest_snapshots(name, n=2)
+            if len(snapshots) < 2:
+                continue  # nothing to diff yet: fewer than two runs have snapshotted this source
+            newer, older = snapshots[0], snapshots[1]
+            changesets[name] = diff(older, newer)
 
-    change_report = ChangeReport.from_changesets(changesets, generated_at=datetime.now(UTC))
-    text = change_report.to_json() if as_json else change_report.to_html()
+        change_report = ChangeReport.from_changesets(changesets, generated_at=datetime.now(UTC))
+        text = change_report.to_json() if as_json else change_report.to_html()
+
+        if out is not None:
+            Path(out).write_text(text, encoding="utf-8")
+    except Exception as exc:  # a bad --db-url or an unwritable --out: report it, don't crash
+        typer.echo(f"report failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
     if out is not None:
-        Path(out).write_text(text, encoding="utf-8")
         typer.echo(str(out))
     else:
         typer.echo(text)
@@ -182,9 +187,14 @@ def export(
     settings = Settings()
     resolved_db_url = db_url if db_url is not None else settings.db_url
 
-    storage = Storage(resolved_db_url)
-    storage.open()
-    storage.export(source, fmt, out)
+    try:
+        storage = Storage(resolved_db_url)
+        storage.open()
+        storage.export(source, fmt, out)
+    except Exception as exc:  # a bad --db-url or an unwritable --out: report it, don't crash
+        typer.echo(f"export failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
     typer.echo(str(out))
 
 

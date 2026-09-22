@@ -1,10 +1,11 @@
 """scrapewatch's command line, exercised through Typer's own `CliRunner`.
 
-Only two tests, deliberately: an unknown source is refused before anything runs, and a
-real (if tiny) `scrape demo` writes both output files. Everything else the CLI does —
-`report`, `export`, `stats`, `demo-store` — is a thin wrapper over `Storage`/`diff`/
-`ChangeReport`, already proven in `tests/integration` and `tests/unit/test_report.py`;
-re-testing their logic here through the CLI would only restate it.
+Three tests, deliberately kept few: an unknown source is refused before anything
+runs, a bad `--db-url` is reported instead of crashing, and a real (if tiny) `scrape
+demo` writes both output files. Everything else the CLI does — `report`, `export`,
+`stats`, `demo-store` — is a thin wrapper over `Storage`/`diff`/`ChangeReport`,
+already proven in `tests/integration` and `tests/unit/test_report.py`; re-testing
+their logic here through the CLI would only restate it.
 
 `test_scrape_demo_writes_stats_and_report` starts a real HTTP server (`demo_store_url`,
 shared from the top-level `tests/conftest.py`), so it carries its own `e2e` marker
@@ -25,6 +26,21 @@ from scrapewatch.cli import app
 def test_scrape_names_the_sources_it_knows() -> None:
     result = CliRunner().invoke(app, ["scrape", "nowhere"])
     assert result.exit_code != 0 and "books" in result.output and "quotes" in result.output and "demo" in result.output
+
+
+@pytest.mark.unit
+def test_scrape_reports_a_bad_db_url_instead_of_a_traceback() -> None:
+    """`Storage.open()` fails on a scheme SQLAlchemy has no dialect for — `scrape`
+    must report that itself, not let it escape as an unhandled traceback. No network
+    is touched: storage opens before anything reaches `--demo-url` at all.
+    """
+    result = CliRunner().invoke(
+        app,
+        ["scrape", "demo", "--db-url", "not-a-real-scheme://nope", "--demo-url", "http://127.0.0.1:1"],
+    )
+    assert result.exit_code == 1
+    assert "scrape failed" in result.output
+    assert "Traceback" not in result.output
 
 
 @pytest.mark.e2e

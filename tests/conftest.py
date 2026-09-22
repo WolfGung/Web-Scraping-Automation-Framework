@@ -8,11 +8,14 @@ Two independent jobs live here:
   directories now share the same fixture instead of two copies drifting apart.
 
 - Allure wiring — `pytest_sessionstart` copies `allure/categories.json` and writes
-  `environment.properties` into `--alluredir`, and `pytest_runtest_makereport`
-  attaches a best-effort failure screenshot for anything driving a Playwright page.
-  Both are courtesies to the report, never reasons to fail or abort a run: every
-  step here is wrapped so a missing file, an unwritable directory, or a hung page
-  turns into a `warnings.warn`, not a crashed session.
+  most of `environment.properties` into `--alluredir`; `pytest_collection_finish`
+  appends the one fact `sessionstart` can't yet know (`browser=...`, only once
+  `session.items` says a browser test was actually selected); and
+  `pytest_runtest_makereport` attaches a best-effort failure screenshot for anything
+  driving a Playwright page. All three are courtesies to the report, never reasons
+  to fail or abort a run: every step here is wrapped so a missing file, an
+  unwritable directory, or a hung page turns into a `warnings.warn`, not a crashed
+  session.
 """
 from __future__ import annotations
 
@@ -91,22 +94,16 @@ def _copy_categories(results_dir: Path) -> None:
     shutil.copyfile(_CATEGORIES_FILE, results_dir / "categories.json")
 
 
-def _collects_browser_tests(config: pytest.Config) -> bool:
-    """A cheap guess at whether this session will drive a browser.
+def _collects_browser_tests(items: list[pytest.Item]) -> bool:
+    """Whether this session will actually run a browser test, exactly, not a guess.
 
-    Cheap and approximate, not exact: it reads the `-m` expression and the paths
-    given on the command line, before collection has actually happened, rather than
-    inspecting `session.items`'s fixture closure the way a slower, precise check
-    could. `pytest -m "not live" tests/unit` would still trip the `"live"` substring
-    here despite running no browser at all — an over-eager guess for an environment
-    panel is a harmless cost, unlike an under-eager one that silently mislabels a
-    real browser run.
+    Reads `session.items` — what will actually run, after `-m` deselection has
+    already happened — rather than the raw `-m` expression text: a substring check
+    on that text would mislabel `pytest -m "not live" tests/unit` as a browser run,
+    since `"not live"` itself contains the substring `"live"` despite excluding only
+    `live`-marked tests and running no browser at all.
     """
-    markexpr = config.getoption("markexpr", default="") or ""
-    if "e2e" in markexpr or "live" in markexpr:
-        return True
-    invocation_args = " ".join(str(arg) for arg in config.invocation_params.args)
-    return "tests/e2e" in invocation_args or "tests/live" in invocation_args
+    return any(item.get_closest_marker("e2e") or item.get_closest_marker("live") for item in items)
 
 
 def _chromium_version() -> str:
@@ -127,7 +124,14 @@ def _chromium_version() -> str:
         return "chromium"
 
 
-def _write_environment_properties(results_dir: Path, config: pytest.Config) -> None:
+def _write_environment_properties(results_dir: Path) -> None:
+    """The facts knowable at session start — everything except `browser`.
+
+    Whether this run drives a browser at all is not a fact about `Settings()` or the
+    command line; it is a fact about which tests actually ended up selected, which
+    isn't known yet at `pytest_sessionstart`. `pytest_collection_finish` appends
+    `browser=...` afterwards, once `session.items` exists to ask.
+    """
     settings = Settings()
     lines = [
         f"db.url.scheme={urlsplit(settings.db_url).scheme}",
@@ -135,8 +139,6 @@ def _write_environment_properties(results_dir: Path, config: pytest.Config) -> N
         f"python={sys.version.split()[0]}",
         f"ci={os.getenv('GITHUB_ACTIONS', 'false')}",
     ]
-    if _collects_browser_tests(config):
-        lines.append(f"browser={_chromium_version()}")
     results_dir.mkdir(parents=True, exist_ok=True)
     (results_dir / "environment.properties").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -156,9 +158,34 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     except Exception as exc:
         warnings.warn(f"could not copy categories.json into {results_dir}: {exc!r}", stacklevel=2)
     try:
-        _write_environment_properties(results_dir, session.config)
+        _write_environment_properties(results_dir)
     except Exception as exc:
         warnings.warn(f"could not write environment.properties into {results_dir}: {exc!r}", stacklevel=2)
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Append `browser=...` to `environment.properties`, once collection says one will run.
+
+    Deliberately later than `pytest_sessionstart`: `session.items` is the selected
+    set after `-m` deselection, so this is exact where a check at session start could
+    only guess. An append, not a rewrite, so a failure here can never undo the facts
+    `pytest_sessionstart` already wrote successfully — the two are independent, same
+    as the two writes inside `pytest_sessionstart` itself are independent of each
+    other.
+    """
+    if session.config.option.collectonly:
+        return
+    alluredir = session.config.getoption("--alluredir", default=None)
+    if not alluredir:
+        return
+    if not _collects_browser_tests(session.items):
+        return
+    results_dir = Path(alluredir)
+    try:
+        with (results_dir / "environment.properties").open("a", encoding="utf-8") as handle:
+            handle.write(f"browser={_chromium_version()}\n")
+    except Exception as exc:
+        warnings.warn(f"could not append browser to environment.properties in {results_dir}: {exc!r}", stacklevel=2)
 
 
 # -- Allure: a failure screenshot for anything driving a page --------------------
