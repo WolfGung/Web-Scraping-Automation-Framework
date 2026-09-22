@@ -30,6 +30,3 @@ published/
 publish-tree/
 publish-data/
 
-# Local working notes: design specs, plans and agent state, not part of the project
-.notes/
-docs/notes/
