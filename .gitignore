@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local working notes: design specs and plans, not part of the project
+docs/notes/
+
+# scrapewatch project-specific
+.venv/
+allure-results/
+allure-report/
+site/
+videos/
+traces/
+*.sqlite3
+data/

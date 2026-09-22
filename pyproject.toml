@@ -1,0 +1,54 @@
+[project]
+name = "scrapewatch"
+version = "0.1.0"
+description = "Web Scraping Automation Framework: polite multi-source scraping with change detection"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28",
+    "selectolax>=0.3.21",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0.36",
+    "playwright>=1.49",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "typer>=0.15",
+    "allure-pytest>=2.13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "ruff>=0.8", "pytest-rerunfailures>=15.0"]
+postgres = ["psycopg[binary]>=3.2"]
+
+[project.scripts]
+scrapewatch = "scrapewatch.cli:app"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "unit: pure logic, no I/O",
+    "parsers: parsing of saved fixture pages",
+    "integration: pipeline against a real SQLite file",
+    "e2e: browser or full-stack runs against the demo store",
+    "live: hits the real practice sites (opt-in, nightly)",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scrapewatch", "showcase"]
