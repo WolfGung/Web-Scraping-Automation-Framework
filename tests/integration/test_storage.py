@@ -8,10 +8,11 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from sqlalchemy.orm import Session
 
 from scrapewatch.models import Record
 from scrapewatch.pipeline.diff import diff
-from scrapewatch.storage import Storage
+from scrapewatch.storage import ChangeRow, Storage
 
 pytestmark = pytest.mark.integration
 
@@ -82,3 +83,54 @@ def test_export_writes_an_empty_cell_for_a_none_field(storage: Storage, tmp_path
     rows = list(csv.DictReader((tmp_path / "demo.csv").open()))
     payload = json.loads((tmp_path / "demo.json").read_text())
     assert rows[0]["stock"] == "" and payload[0]["stock"] is None
+
+
+def test_a_decimal_inside_a_list_round_trips_through_the_database(storage: Storage) -> None:
+    """Finding 1: the tagged-Decimal round trip must reach through a list, not just top-level fields."""
+    r1 = storage.start_run(["demo"])
+    storage.save_snapshot(r1, "demo", [_rec("1", prices=[Decimal("1.50"), Decimal("2.75")])])
+    (latest,) = storage.latest_snapshots("demo", n=1)
+    assert latest[0].fields["prices"] == [Decimal("1.50"), Decimal("2.75")]
+
+
+def test_a_decimal_inside_a_nested_dict_round_trips_through_the_database(storage: Storage) -> None:
+    """Finding 1: and through a nested dict, alongside an ordinary string in the same dict."""
+    r1 = storage.start_run(["demo"])
+    storage.save_snapshot(r1, "demo", [_rec("1", meta={"price": Decimal("2.50"), "note": "sale"})])
+    (latest,) = storage.latest_snapshots("demo", n=1)
+    assert latest[0].fields["meta"] == {"price": Decimal("2.50"), "note": "sale"}
+
+
+def test_a_field_colliding_with_the_reserved_decimal_tag_is_refused_loudly(storage: Storage) -> None:
+    """Finding 1: a raw dict that already looks like a tagged decimal must not be silently misread."""
+    r1 = storage.start_run(["demo"])
+    with pytest.raises(ValueError, match="weird"):
+        storage.save_snapshot(r1, "demo", [_rec("1", weird={"__decimal__": "99.99"})])
+
+
+def test_changes_table_records_change_type_and_only_changed_rows_carry_a_payload(storage: Storage) -> None:
+    """Finding 4: `change_type` disambiguates the row; added/removed store no field payload."""
+    r1 = storage.start_run(["demo"])
+    storage.save_snapshot(r1, "demo", [_rec("1", price=Decimal("10")), _rec("2", price=Decimal("5"))])
+    r2 = storage.start_run(["demo"])
+    storage.save_snapshot(r2, "demo", [_rec("1", price=Decimal("12")), _rec("3", price=Decimal("7"))])
+
+    latest, previous = storage.latest_snapshots("demo", n=2)
+    changeset = diff(previous, latest)
+    storage.save_changes(r2, "demo", changeset)
+
+    with Session(storage._engine) as session:
+        rows = session.query(ChangeRow).filter(ChangeRow.run_id == r2.id).all()
+    by_type = {row.change_type: row for row in rows}
+
+    assert by_type["changed"].field == "price"
+    assert json.loads(by_type["changed"].before_json) == {"__decimal__": "10"}
+    assert json.loads(by_type["changed"].after_json) == {"__decimal__": "12"}
+
+    assert by_type["added"].field is None
+    assert by_type["added"].before_json is None
+    assert by_type["added"].after_json is None
+
+    assert by_type["removed"].field is None
+    assert by_type["removed"].before_json is None
+    assert by_type["removed"].after_json is None

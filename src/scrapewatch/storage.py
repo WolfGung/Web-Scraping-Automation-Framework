@@ -9,9 +9,11 @@ creating the parent directory of a SQLite file, which PostgreSQL has no equivale
 Datetimes and decimals are stored as text, not as native column types: SQLite has no
 native timezone-aware timestamp, and no exact decimal type either, and a diff that
 reports 51.77 becoming 51.770000001 because of a lossy round trip is a lie about the
-site. `_tag_fields`/`_untag_fields` mark a `Decimal` with `{"__decimal__": "<text>"}`
-so it comes back exactly what went in; `None` passes through unmarked, so "unknown"
-never turns into "zero" on the way out.
+site. `_tag_fields`/`_untag_fields` mark a `Decimal` with `{"__decimal__": "<text>"}`,
+recursively through lists and dicts, so it comes back exactly what went in; `None`
+passes through unmarked, so "unknown" never turns into "zero" on the way out. A raw
+field that already contains the reserved `__decimal__` key is refused with a
+`ValueError` rather than silently misread as a tagged decimal on the way back.
 """
 from __future__ import annotations
 
@@ -70,21 +72,25 @@ class RecordRow(Base):
 
 
 class ChangeRow(Base):
+    """One row per thing a diff found: a changed field, or a whole record added/removed.
+
+    `change_type` says which of the three this row is, so `field`/`before_json`/
+    `after_json` mean one thing, not two: they carry the field name and its two values
+    only for `"changed"`. An `"added"`/`"removed"` row stores no payload — the whole
+    record is already in the snapshot on that side of the diff, so duplicating it here
+    would just be another place for it to go stale.
+    """
+
     __tablename__ = "changes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[int] = mapped_column(ForeignKey("runs.id"))
     source: Mapped[str] = mapped_column(String)
     external_id: Mapped[str] = mapped_column(String)
-    field: Mapped[str] = mapped_column(String)
+    change_type: Mapped[str] = mapped_column(String)  # "changed" | "added" | "removed"
+    field: Mapped[str | None] = mapped_column(String, nullable=True)
     before_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     after_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-
-#: Sentinel field names `save_changes` uses for whole-record additions/removals, which
-#: don't have a single "field" the way a changed value does.
-_ADDED = "__added__"
-_REMOVED = "__removed__"
 
 
 @dataclass(frozen=True)
@@ -108,38 +114,54 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _encode_value(value: Any) -> Any:
-    """Tag a `Decimal` so it survives a JSON round trip exactly; everything else passes through."""
+#: The key `_encode_value` tags a `Decimal` with. A raw field carrying this key itself
+#: would be indistinguishable from a tagged decimal on the way back, so encoding it
+#: is refused outright rather than risking a silent misread.
+_DECIMAL_TAG = "__decimal__"
+
+
+def _encode_value(value: Any, field_name: str) -> Any:
+    """Tag every `Decimal` reachable from `value`, however deep in a list or dict.
+
+    `field_name` is only for the error message: a raw field that already uses the
+    reserved `__decimal__` key would come back as a `Decimal` it never was, so that
+    is refused loudly here instead of being stored wrong.
+    """
     if isinstance(value, Decimal):
-        return {"__decimal__": str(value)}
+        return {_DECIMAL_TAG: str(value)}
+    if isinstance(value, dict):
+        if _DECIMAL_TAG in value:
+            raise ValueError(f"{field_name}: value uses the reserved key {_DECIMAL_TAG!r}, cannot be stored")
+        return {key: _encode_value(item, field_name) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_encode_value(item, field_name) for item in value]
     return value
 
 
 def _decode_value(value: Any) -> Any:
-    if isinstance(value, dict) and set(value) == {"__decimal__"}:
-        return Decimal(value["__decimal__"])
+    """Undo `_encode_value`. Only a dict with *exactly* the tag key is a decimal."""
+    if isinstance(value, dict):
+        if set(value) == {_DECIMAL_TAG}:
+            return Decimal(value[_DECIMAL_TAG])
+        return {key: _decode_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_decode_value(item) for item in value]
     return value
 
 
 def _tag_fields(fields: dict[str, Any]) -> dict[str, Any]:
-    return {key: _encode_value(value) for key, value in fields.items()}
+    return {key: _encode_value(value, key) for key, value in fields.items()}
 
 
 def _untag_fields(fields: dict[str, Any]) -> dict[str, Any]:
     return {key: _decode_value(value) for key, value in fields.items()}
 
 
-def _dump_value(value: Any) -> str | None:
+def _dump_value(value: Any, field_name: str) -> str | None:
     """Serialise a single before/after value for the `changes` table. `None` stays `None`."""
     if value is None:
         return None
-    return json.dumps(_encode_value(value))
-
-
-def _load_value(text: str | None) -> Any:
-    if text is None:
-        return None
-    return _decode_value(json.loads(text))
+    return json.dumps(_encode_value(value, field_name))
 
 
 def _row_to_record(row: RecordRow) -> Record:
@@ -224,7 +246,12 @@ class Storage:
             return result
 
     def save_changes(self, run: Run, source: str, changeset: ChangeSet) -> None:
-        """Persist one `changes` row per field change, plus one per whole record added/removed."""
+        """Persist one `changes` row per field change, plus one per whole record added/removed.
+
+        Only a `"changed"` row carries `field`/`before_json`/`after_json`: an
+        `"added"`/`"removed"` row's record is already in the snapshot on that side of
+        the diff, so it stores no payload of its own to go stale.
+        """
         with self._session() as session:
             for change in changeset.changed:
                 session.add(
@@ -232,9 +259,10 @@ class Storage:
                         run_id=run.id,
                         source=source,
                         external_id=change.external_id,
+                        change_type="changed",
                         field=change.field,
-                        before_json=_dump_value(change.before),
-                        after_json=_dump_value(change.after),
+                        before_json=_dump_value(change.before, change.field),
+                        after_json=_dump_value(change.after, change.field),
                     )
                 )
             for record in changeset.added:
@@ -243,9 +271,10 @@ class Storage:
                         run_id=run.id,
                         source=source,
                         external_id=record.external_id,
-                        field=_ADDED,
+                        change_type="added",
+                        field=None,
                         before_json=None,
-                        after_json=json.dumps(_tag_fields(record.fields)),
+                        after_json=None,
                     )
                 )
             for record in changeset.removed:
@@ -254,8 +283,9 @@ class Storage:
                         run_id=run.id,
                         source=source,
                         external_id=record.external_id,
-                        field=_REMOVED,
-                        before_json=json.dumps(_tag_fields(record.fields)),
+                        change_type="removed",
+                        field=None,
+                        before_json=None,
                         after_json=None,
                     )
                 )
