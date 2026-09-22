@@ -43,3 +43,9 @@ def test_html_escapes_what_the_site_said() -> None:
 def test_a_source_with_no_changes_is_stated_not_omitted() -> None:
     report = ChangeReport.from_changesets({"books": diff([], [])}, generated_at=datetime.now(UTC))
     assert json.loads(report.to_json())["sources"]["books"] == {"added": 0, "removed": 0, "changed": 0, "changes": []}
+
+
+def test_html_shows_an_absent_side_as_a_placeholder_not_the_word_none() -> None:
+    cs = diff([_rec("1", stock=None)], [_rec("1", stock=22)])
+    html = ChangeReport.from_changesets({"demo": cs}, generated_at=datetime.now(UTC)).to_html()
+    assert "(absent)" in html and "None" not in html

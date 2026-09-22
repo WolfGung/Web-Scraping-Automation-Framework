@@ -4,7 +4,9 @@ Everything is keyed by ``Record.key`` — ``(source, external_id)`` — so the d
 depends on list order: two lists with the same records in different order produce no
 changes. It compares ``fields`` only: ``fetched_at`` is bookkeeping about *when* we
 looked, not part of *what* we saw, and neither it nor ``url`` nor ``kind`` can change
-without the identifier changing too.
+without the identifier changing too. Field comparison is plain ``==``, so a price
+whose text changed but whose value did not — ``Decimal("10")`` vs. ``Decimal("10.0")``
+— is correctly reported as unchanged; that is intentional, not a bug to "fix" later.
 """
 from __future__ import annotations
 

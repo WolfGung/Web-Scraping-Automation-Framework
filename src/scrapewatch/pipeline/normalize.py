@@ -57,10 +57,13 @@ def _require(fields: dict[str, Any], name: str) -> Any:
     return fields[name]
 
 
-def _clean_text(value: Any, field_name: str) -> str:
+def _clean_text(value: Any, field_name: str, *, required: bool = False) -> str:
     if not isinstance(value, str):
         raise ValueError(f"{field_name}: not text ({value!r})")
-    return _WHITESPACE_RE.sub(" ", unicodedata.normalize("NFKC", value)).strip()
+    cleaned = _WHITESPACE_RE.sub(" ", unicodedata.normalize("NFKC", value)).strip()
+    if required and not cleaned:
+        raise ValueError(f"{field_name}: blank")
+    return cleaned
 
 
 def _parse_price(value: Any) -> tuple[Decimal, str]:
@@ -77,12 +80,19 @@ def _parse_price(value: Any) -> tuple[Decimal, str]:
     return amount, currency
 
 
-def _parse_availability(value: Any) -> tuple[bool, int]:
+def _parse_availability(value: Any) -> tuple[bool, int | None]:
+    """Read the flag and, when the page bothers to say, the count.
+
+    A listing page usually just says "In stock" or "Out of stock" — the count only
+    shows up on a detail page. Unknown is not zero: when no number is present the
+    count is ``None``, not ``0``, so a later fetch that fills it in reads as a real
+    gain rather than a no-op.
+    """
     if not isinstance(value, str):
         raise ValueError(f"availability: cannot parse {value!r}")
     in_stock = "in stock" in value.lower()
     match = _AVAILABLE_RE.search(value)
-    stock = int(match.group(1)) if match else 0
+    stock = int(match.group(1)) if match else None
     return in_stock, stock
 
 
@@ -108,7 +118,7 @@ def _parse_int(value: Any, field_name: str) -> int:
 
 
 def _normalize_book(fields: dict[str, Any]) -> dict[str, Any]:
-    title = _clean_text(_require(fields, "title"), "title")
+    title = _clean_text(_require(fields, "title"), "title", required=True)
     price, currency = _parse_price(_require(fields, "price"))
     in_stock, stock = _parse_availability(_require(fields, "availability"))
     rating = _parse_rating(_require(fields, "rating"))
@@ -127,8 +137,8 @@ def _normalize_book(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_quote(fields: dict[str, Any]) -> dict[str, Any]:
-    text = _clean_text(_require(fields, "text"), "text")
-    author = _clean_text(_require(fields, "author"), "author")
+    text = _clean_text(_require(fields, "text"), "text", required=True)
+    author = _clean_text(_require(fields, "author"), "author", required=True)
     tags = _require(fields, "tags")
     if not isinstance(tags, list):
         raise ValueError(f"tags: not a list ({tags!r})")
@@ -136,7 +146,7 @@ def _normalize_quote(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_demo(fields: dict[str, Any]) -> dict[str, Any]:
-    name = _clean_text(_require(fields, "name"), "name")
+    name = _clean_text(_require(fields, "name"), "name", required=True)
     price, currency = _parse_price(_require(fields, "price"))
     in_stock = _parse_bool(_require(fields, "in_stock"), "in_stock")
     stock = _parse_int(_require(fields, "stock"), "stock")

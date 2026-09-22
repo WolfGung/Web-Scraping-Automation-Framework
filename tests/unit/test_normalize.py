@@ -39,3 +39,35 @@ def test_whitespace_and_odd_unicode_are_cleaned() -> None:
 def test_a_record_that_cannot_be_normalised_says_which_field() -> None:
     with pytest.raises(ValueError, match="price"):
         normalize(_raw(title="A", price="free?", availability="In stock (1 available)", rating="One"))
+
+
+def test_in_stock_with_no_count_leaves_the_count_unknown() -> None:
+    rec = normalize(_raw(title="A", price="£1.00", availability="In stock", rating="One"))
+    assert rec.fields["in_stock"] is True and rec.fields["stock"] is None
+
+
+def test_in_stock_with_a_count_still_reads_the_number() -> None:
+    rec = normalize(_raw(title="A", price="£1.00", availability="In stock (22 available)", rating="One"))
+    assert rec.fields["in_stock"] is True and rec.fields["stock"] == 22
+
+
+def test_out_of_stock_also_leaves_the_count_unknown() -> None:
+    rec = normalize(_raw(title="A", price="£1.00", availability="Out of stock", rating="One"))
+    assert rec.fields["in_stock"] is False and rec.fields["stock"] is None
+
+
+def test_a_blank_book_title_is_rejected() -> None:
+    with pytest.raises(ValueError, match="title"):
+        normalize(_raw(title="   ", price="£1.00", availability="In stock (1 available)", rating="One"))
+
+
+def test_a_blank_quote_text_is_rejected() -> None:
+    raw = RawRecord(
+        source="quotes",
+        external_id="q1",
+        fetched_at=datetime.now(UTC),
+        url="https://q/q1",
+        fields={"text": "   ", "author": "Anon", "tags": ["life"]},
+    )
+    with pytest.raises(ValueError, match="text"):
+        normalize(raw)

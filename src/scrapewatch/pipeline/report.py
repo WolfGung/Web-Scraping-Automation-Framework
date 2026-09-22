@@ -90,13 +90,20 @@ class ChangeReport:
 
     @staticmethod
     def _render_record(record: Record) -> str:
-        field_text = ", ".join(f"{html.escape(str(k))}={html.escape(str(v))}" for k, v in record.fields.items())
+        field_text = ", ".join(
+            f"{html.escape(str(k))}={html.escape(ChangeReport._display(v))}" for k, v in record.fields.items()
+        )
         return f"{html.escape(record.external_id)}: {field_text}"
 
     @staticmethod
     def _render_change_row(change: FieldChange) -> str:
         eid = html.escape(str(change.external_id))
         field_name = html.escape(str(change.field))
-        before = html.escape(str(change.before))
-        after = html.escape(str(change.after))
+        before = html.escape(ChangeReport._display(change.before))
+        after = html.escape(ChangeReport._display(change.after))
         return f"<tr><td>{eid}</td><td>{field_name}</td><td>{before}</td><td>{after}</td></tr>"
+
+    @staticmethod
+    def _display(value: Any) -> str:
+        """Render a field value for HTML: a missing/unknown value is not the string "None"."""
+        return "(absent)" if value is None else str(value)
