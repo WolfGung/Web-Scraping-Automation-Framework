@@ -7,6 +7,9 @@ Two independent jobs live here:
   a test (`test_scrape_demo_writes_stats_and_report`) that also needs one, so both
   directories now share the same fixture instead of two copies drifting apart.
 
+- `browser_session` — a `BrowserSession` for the length of one test, which is also
+  what makes the failure screenshot below possible at all.
+
 - Allure wiring — `pytest_sessionstart` copies `allure/categories.json` and writes
   most of `environment.properties` into `--alluredir`; `pytest_collection_finish`
   appends the one fact `sessionstart` can't yet know (`browser=...`, only once
@@ -37,6 +40,7 @@ import httpx
 import pytest
 import uvicorn
 
+from scrapewatch.browser import BrowserSession
 from scrapewatch.config import Settings
 from scrapewatch.demo_store.app import create_app
 
@@ -79,6 +83,27 @@ def demo_store_url() -> Iterator[str]:
 
     server.should_exit = True
     thread.join(timeout=5.0)
+
+
+@pytest.fixture
+def browser_session() -> Iterator[BrowserSession]:
+    """One `BrowserSession` on default settings, opened and closed around a test.
+
+    A fixture rather than a `with` block inside each test, for one reason: when a
+    browser test fails, `pytest_runtest_makereport` below can reach the session
+    through `item.funcargs` and attach a screenshot of whatever was on screen. A
+    session opened inside the test body is gone by then — the `with` has already
+    exited — and the hook has nothing to photograph.
+
+    Function-scoped on purpose: a browser shared between tests carries one test's
+    cookies and one test's page into the next, and `login` exists here precisely
+    because a session remembers things.
+
+    A test that needs different settings — recording turned on, a video directory of
+    its own — still opens its own session, since that is what it is testing.
+    """
+    with BrowserSession(Settings()) as session:
+        yield session
 
 
 # -- Allure: categories + environment, copied into --alluredir ------------------
@@ -265,22 +290,26 @@ def _capture_failure_diagnostics(page: Any) -> None:
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> Any:
     """Attach a failure screenshot for anything driving a Playwright `page`-like fixture.
 
-    NOTE — a known limitation, not an oversight: this project's own browser-driven
-    tests (`tests/e2e/test_browser_engine.py`, `tests/e2e/test_demo_store.py`,
-    `tests/live/test_quotes_live.py`) each open a `BrowserSession` inside the test
-    body with a plain `with` statement, by design (see `scrapewatch.browser
-    .BrowserSession`'s own docstring), rather than through a fixture. `item.funcargs`
-    never holds a `page` or `browser_session` for any of them, so this hook finds
-    nothing to attach against today. It is still wired up against those funcarg
-    names — the shape a fixture-based Playwright test would use — for the day one is
-    added, rather than skipped outright; restructuring the existing tests to fit a
-    fixture was explicitly out of scope for this task.
+    Two funcarg names are understood: `page`, which is what a Playwright plugin
+    hands a test, and `browser_session`, this suite's own fixture — from which the
+    page is taken through `BrowserSession.page`, a read-only view that does not open
+    one. A test that failed before rendering anything therefore has nothing to
+    photograph, and says so by having no attachment rather than by opening a browser
+    page on its way out.
+
+    A test that opens its own session inside its body is still invisible here, and
+    that is a real limitation rather than an oversight: the session is closed by the
+    time this runs. The one test that does so (`test_recording_is_off_by_default_and
+    _on_when_asked`) opens two sessions with different settings, which is the thing
+    it is testing.
     """
     outcome = yield
     report = outcome.get_result()
     if report.when != "call" or not report.failed:
         return
-    page = item.funcargs.get("page") or item.funcargs.get("browser_session")
+    funcarg = item.funcargs.get("page") or item.funcargs.get("browser_session")
+    # A `BrowserSession` hands over the page it has open; a `page` funcarg is one.
+    page = getattr(funcarg, "page", funcarg)
     if page is None or not hasattr(page, "screenshot"):
         return
     _capture_failure_diagnostics(page)

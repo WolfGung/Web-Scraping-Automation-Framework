@@ -104,6 +104,17 @@ class BrowserSession:
                     if self._playwright is not None:
                         self._playwright.stop()
 
+    @property
+    def page(self) -> Page | None:
+        """The page this session has open, or `None` if nothing has opened one yet.
+
+        Read-only, and deliberately not `_get_page()`: this exists for the failure
+        screenshot in `tests/conftest.py`, and a test that failed before it ever
+        rendered anything must not have a browser page created for it on the way out.
+        Nothing about the session's own work goes through here.
+        """
+        return self._page
+
     def _get_page(self) -> Page:
         if self._page is None:
             assert self._context is not None, "BrowserSession used outside its `with` block"
