@@ -27,3 +27,31 @@ curl -sA "scrapewatch/0.1 (+https://github.com/WolfGung/Web-Scraping-Automation-
 | `detail.html` | `https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html` |
 
 `robots.txt` on this host is a 404 (checked 2026-09-22), so nothing here is disallowed.
+
+# Fixtures: quotes.toscrape.com
+
+Snapshot of the `/js/` page and its API twin, taken **2026-09-22**, for the `parsers`
+test gate that proves `parse_quotes` against real markup with no network.
+
+`js.html` is the point of `QuotesSource` existing at all: it carries its quotes only
+inside a `<script>` block, as a JSON array a client-side script renders into
+`div.quote` markup after load. Fetched as plain HTML with `curl`, the page has no
+`div.quote` anywhere in it — a parser run on it correctly finds nothing, which is
+exactly what `test_the_unrendered_js_page_has_no_quotes_in_its_html` proves. Reading
+this page at all requires a browser (`scrapewatch.browser.BrowserSession`), not
+another HTTP client.
+
+```bash
+curl -sA "scrapewatch/0.1 (+https://github.com/WolfGung/Web-Scraping-Automation-Framework)" \
+  https://quotes.toscrape.com/js/ -o tests/fixtures/quotes/js.html
+
+curl -sA "scrapewatch/0.1 (+https://github.com/WolfGung/Web-Scraping-Automation-Framework)" \
+  "https://quotes.toscrape.com/api/quotes?page=1" -o tests/fixtures/quotes/api-page-1.json
+```
+
+| File | Source URL |
+| --- | --- |
+| `js.html` | `https://quotes.toscrape.com/js/` — quotes only in a `<script>` block, none in the HTML |
+| `api-page-1.json` | `https://quotes.toscrape.com/api/quotes?page=1` — reference data for `QuotesSource.cross_check()` |
+
+`robots.txt` on this host is a 404 (checked 2026-09-22), so nothing here is disallowed.
