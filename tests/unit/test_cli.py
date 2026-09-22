@@ -26,7 +26,8 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
-from scrapewatch.cli import app
+from scrapewatch.cli import _refuse_a_short_scroll, app
+from scrapewatch.sources import FULL_RUN_SIZES
 from scrapewatch.storage import SnapshotRow
 
 
@@ -204,6 +205,23 @@ def test_the_database_keeps_only_the_snapshots_the_caller_asked_for(tmp_path, de
     with Session(create_engine(f"sqlite:///{tmp_path}/db.sqlite3")) as session:
         assert session.scalar(select(func.count()).select_from(SnapshotRow)) == 2
     assert "pruned 1 snapshot(s) beyond the last 2 per source" in result.output
+
+
+@pytest.mark.unit
+def test_a_scroll_that_stopped_short_is_refused_by_name() -> None:
+    """A stalled scroll writes a perfectly valid recording of nothing happening.
+
+    Nothing downstream can tell that apart from a good one — the file is there, the
+    right size, and it plays — so the check has to be here, and its message has to
+    name both numbers for whoever reads the failed run.
+    """
+    with pytest.raises(RuntimeError, match=r"reached 3 products, not the 40"):
+        _refuse_a_short_scroll(3)
+
+
+@pytest.mark.unit
+def test_a_scroll_that_reached_the_end_is_not_refused() -> None:
+    assert _refuse_a_short_scroll(FULL_RUN_SIZES["demo"]) is None
 
 
 @pytest.mark.e2e

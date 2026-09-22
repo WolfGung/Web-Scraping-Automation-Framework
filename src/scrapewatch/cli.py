@@ -35,7 +35,7 @@ from scrapewatch.http import PoliteClient
 from scrapewatch.pipeline.diff import diff
 from scrapewatch.pipeline.report import ChangeReport
 from scrapewatch.pipeline.run import run_sources
-from scrapewatch.sources import KNOWN_SOURCES
+from scrapewatch.sources import FULL_RUN_SIZES, KNOWN_SOURCES
 from scrapewatch.sources.base import Source
 from scrapewatch.sources.books import BooksSource
 from scrapewatch.sources.demo import DemoSource
@@ -75,6 +75,25 @@ DEFAULT_KEEP_SNAPSHOTS = 30
 #: The numeric shape every entry of `run-stats.json` has, so a source that never ran
 #: reads the same way as one that did — zeroes, not absent keys.
 _ZERO_SOURCE_STATS = {"records": 0, "pages": 0, "requests": 0, "retries": 0, "bytes": 0, "seconds": 0.0}
+
+
+def _refuse_a_short_scroll(cards: int) -> None:
+    """Fail unless the scroll actually reached the end of the demo store's catalogue.
+
+    The recording is the one thing on the published page a reader can watch, and a
+    scroll that stalled three cards in produces a perfectly valid WebM of nothing
+    happening. Nothing downstream can tell that apart from a good recording — the
+    file is there, the right size, and it plays — so the only place it can be caught
+    is here, against the number of products the store is known to hold. A night that
+    recorded a stall should go red, not publish it.
+    """
+    expected = FULL_RUN_SIZES["demo"]
+    if cards != expected:
+        raise RuntimeError(
+            f"the scroll reached {cards} products, not the {expected} the demo store holds: "
+            f"it stopped early (a stalled page, a slow store) and this recording would show "
+            f"a scroll that never finished"
+        )
 
 
 def _unknown_source_message(name: str) -> str:
@@ -397,8 +416,9 @@ def record_scroll(
 
     Playwright names the video itself and only writes it when the context closes, so
     the recording is made into a temporary directory and moved into place afterwards;
-    a run that produced no video or no trace fails here rather than leaving the page
-    to discover a missing file later.
+    a run that produced no video or no trace — or one whose scroll stopped short of
+    the catalogue's end — fails here rather than leaving the page to discover it
+    later, or, worse, to publish a recording of a stall as if it were the real thing.
     """
     try:
         settings = Settings()
@@ -419,6 +439,9 @@ def record_scroll(
                     f"{resolved_demo_url}/scroll", item_selector=".product", done_selector='[data-done="true"]'
                 )
             cards = len(HTMLParser(html).css(".product"))
+            # Before the files are moved into place: a stalled scroll is not
+            # published, it is reported.
+            _refuse_a_short_scroll(cards)
 
             videos = sorted(Path(recording.video_dir).glob("*.webm"))
             if not videos:

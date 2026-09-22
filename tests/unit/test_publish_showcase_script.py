@@ -14,7 +14,11 @@ the safety rails the script's own comments describe are still in the file.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -161,3 +165,156 @@ def test_the_script_stops_when_a_jobs_results_never_arrived() -> None:
     text = _text()
     assert 'if [ ! -d "$dir" ]; then' in text
     assert "no results directory at $dir" in text
+
+
+# -- the script, actually run ----------------------------------------------------
+#
+# Everything above reads the file. These two run it, in a throwaway repository with
+# a bare repository standing in for `origin`, because the one thing that cannot be
+# proven by reading is the gate: a script that publishes when it should not have is
+# the failure that already happened once in the sibling project this came from, and
+# a comment saying it will not is not evidence.
+
+ROOT = SCRIPT.parents[1]
+
+#: An Allure result the page builder can summarise: one passed `unit` case.
+_RESULT = {
+    "uuid": "11111111-1111-1111-1111-111111111111",
+    "historyId": "one",
+    "name": "a test",
+    "fullName": "tests/unit/test_x.py::a_test",
+    "status": "passed",
+    "start": 1,
+    "stop": 2,
+    "labels": [{"name": "package", "value": "tests.unit"}, {"name": "tag", "value": "unit"}],
+}
+
+#: One source's block of `run-stats.json`, enough for the builder to read a run.
+_STATS = {
+    "generated_at": "2026-09-22T05:12:00+00:00",
+    "sources": {
+        "demo": {
+            "records": 40, "pages": 4, "requests": 6, "retries": 0, "bytes": 1024, "seconds": 0.4,
+            "kind": "local", "skipped": False, "reason": None, "parse_errors": 0, "parse_error_reasons": [],
+        }
+    },
+}
+_CHANGES = {
+    "generated_at": "2026-09-22T05:12:00+00:00",
+    "sources": {"demo": {"added": 0, "removed": 0, "changed": 2, "changes": []}},
+}
+
+#: Stands in for the Allure command line: the report's contents are not what these
+#: tests are about, and generating a real one would need a JVM to prove a shell gate.
+_FAKE_ALLURE = """#!/bin/sh
+out=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "-o" ]; then out="$2"; fi
+  shift
+done
+mkdir -p "$out"
+echo "<!doctype html><title>report</title>" > "$out/index.html"
+"""
+
+
+def _git(*args: str, cwd) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args], cwd=cwd, capture_output=True, text=True, check=True,
+        env={**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"},
+    )
+
+
+@pytest.fixture
+def assembled(tmp_path):
+    """A repository with everything the publish script reads, and a bare `origin`."""
+    repo, origin = tmp_path / "repo", tmp_path / "origin.git"
+    (repo / "scripts").mkdir(parents=True)
+    shutil.copytree(ROOT / "showcase", repo / "showcase", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy(SCRIPT, repo / "scripts" / SCRIPT.name)
+
+    for name in ("allure-results-gate", "allure-results-e2e", "allure-results"):
+        results = repo / name
+        results.mkdir()
+        (results / f"{name}-result.json").write_text(json.dumps({**_RESULT, "uuid": name}), encoding="utf-8")
+        (results / "categories.json").write_text('[{"name": "Markup drift"}]', encoding="utf-8")
+        (results / "environment.properties").write_text(f"{name}.python=3.12\n", encoding="utf-8")
+
+    run_dir = repo / "data" / "run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run-stats.json").write_text(json.dumps(_STATS), encoding="utf-8")
+    (run_dir / "change-report.json").write_text(json.dumps(_CHANGES), encoding="utf-8")
+    (run_dir / "change-report.html").write_text("<!doctype html><body>changes</body>", encoding="utf-8")
+    (repo / "data" / "exports").mkdir()
+    (repo / "data" / "exports" / "demo.json").write_text("[]", encoding="utf-8")
+    (repo / "media").mkdir()
+
+    allure = tmp_path / "fake-allure"
+    allure.write_text(_FAKE_ALLURE, encoding="utf-8")
+    allure.chmod(0o755)
+
+    _git("init", "-q", "-b", "main", cwd=repo)
+    _git("config", "user.email", "test@example.invalid", cwd=repo)
+    _git("config", "user.name", "Test", cwd=repo)
+    _git("add", "-A", cwd=repo)
+    _git("commit", "-qm", "the checkout the publish step runs in", cwd=repo)
+    _git("init", "-q", "--bare", str(origin), cwd=tmp_path)
+    _git("remote", "add", "origin", str(origin), cwd=repo)
+    return repo, origin, allure
+
+
+def _publish(repo, allure, **extra_env) -> subprocess.CompletedProcess:
+    env = {
+        **os.environ,
+        "ALLURE_CMD": str(allure),
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+    }
+    env.pop("GITHUB_ACTIONS", None)
+    env.pop("PUBLISH_SHOWCASE", None)
+    env.update(extra_env)
+    return subprocess.run(
+        ["bash", "scripts/publish-showcase.sh"], cwd=repo, capture_output=True, text=True, env=env
+    )
+
+
+def _refs(origin) -> str:
+    return subprocess.run(
+        ["git", "show-ref"], cwd=origin, capture_output=True, text=True
+    ).stdout
+
+
+def test_a_local_run_assembles_the_site_and_publishes_nothing(assembled) -> None:
+    """The gate, exercised rather than read.
+
+    A local run that turned out to have push credentials is how a "dry run" once
+    published synthetic data to a real gh-pages branch. Neither `GITHUB_ACTIONS` nor
+    `PUBLISH_SHOWCASE` is set here, and `origin` is a real repository this process
+    can certainly push to — so the only thing stopping it is the gate itself.
+    """
+    repo, origin, allure = assembled
+
+    result = _publish(repo, allure)
+
+    assert result.returncode == 0, result.stderr
+    assert "declining to push" in result.stderr
+    assert "gh-pages" not in _refs(origin), "the gate let a local run publish"
+    assert (repo / "site" / "index.html").is_file(), "assembly still has to happen; only the push is gated"
+    # The orphan branch the script creates outlives the worktree that held it, and a
+    # leftover collides with the next run in the same checkout.
+    assert "gh-pages-new" not in _git("branch", "--list", cwd=repo).stdout
+
+
+def test_an_explicit_opt_in_publishes_the_assembled_site(assembled) -> None:
+    """And the other half: asked to publish, it does — `.nojekyll` and the page."""
+    repo, origin, allure = assembled
+
+    result = _publish(repo, allure, PUBLISH_SHOWCASE="1")
+
+    assert result.returncode == 0, result.stderr
+    assert "refs/heads/gh-pages" in _refs(origin)
+    published = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "gh-pages"], cwd=origin, capture_output=True, text=True
+    ).stdout.splitlines()
+    assert ".nojekyll" in published, "GitHub Pages runs Jekyll otherwise, which eats the Allure report"
+    assert "index.html" in published
+    assert "gh-pages-new" not in _git("branch", "--list", cwd=repo).stdout
