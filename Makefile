@@ -10,8 +10,8 @@ install: ## Install the project with its dev extras (uv if available, else pip).
 		pip install -e ".[dev]"; \
 	fi
 
-lint: ## ruff check src and tests.
-	ruff check src tests
+lint: ## ruff check src, tests, the page builder and the scripts.
+	ruff check src tests showcase scripts
 
 test: ## The network-free gate: everything except tests/live.
 	pytest -m "not live"

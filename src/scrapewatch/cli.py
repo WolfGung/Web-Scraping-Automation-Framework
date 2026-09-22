@@ -2,9 +2,9 @@
 
 One process per invocation, no state kept between commands: every command builds its
 own `Storage`/`PoliteClient`/sources from `Settings()` and the flags it was given,
-runs once, and exits. `scrape` is the only command that touches the network or a
-browser; `report`, `export` and `stats` only ever read back what a previous `scrape`
-already wrote.
+runs once, and exits. `scrape` and `record-scroll` are the only commands that touch
+the network or a browser; `report`, `export` and `stats` only ever read back what a
+previous `scrape` already wrote.
 
 `scrape`'s exit code follows one rule: 0 even when a source was skipped, because a
 skip is a fact `run-stats.json` already states, not a reason to fail the invocation
@@ -13,13 +13,16 @@ produced nothing at all to report.
 """
 from __future__ import annotations
 
+import shutil
 import sys
+import tempfile
 from contextlib import AbstractContextManager, nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
 import uvicorn
+from selectolax.parser import HTMLParser
 
 from scrapewatch.browser import BrowserSession
 from scrapewatch.config import Settings
@@ -97,16 +100,21 @@ def scrape(
     skip_quotes: bool = typer.Option(False, "--skip-quotes", help="Drop quotes from 'all' (CI reachability probe)."),
 ) -> None:
     """Fetch one source (or all of them), snapshot it, diff it against the last run, and report."""
-    settings = Settings()
-    resolved_db_url = db_url if db_url is not None else settings.db_url
-    resolved_demo_url = demo_url if demo_url is not None else settings.demo_url
-
     names = _resolved_sources(source, skip_books=skip_books, skip_quotes=skip_quotes)
     if names is None:
         typer.echo(_unknown_source_message(source))
         raise typer.Exit(code=2)
 
     try:
+        # Built inside the guard, not above it: `Settings()` reads the environment,
+        # and a malformed `SCRAPEWATCH_*` value — a `min_request_interval_s` that is
+        # not a number, say — raises pydantic's own `ValidationError`. Constructed
+        # outside, it would escape as a traceback, which is the one thing this
+        # command's error handling exists to prevent.
+        settings = Settings()
+        resolved_db_url = db_url if db_url is not None else settings.db_url
+        resolved_demo_url = demo_url if demo_url is not None else settings.demo_url
+
         storage = Storage(resolved_db_url)
         storage.open()
         with PoliteClient(settings) as client, _browser_session_for(names, settings) as session:
@@ -139,10 +147,13 @@ def report(
     out: Path | None = typer.Option(None, "--out", help="Write to this path instead of stdout."),
 ) -> None:
     """Rebuild the change report from storage: the last two snapshots of every known source."""
-    settings = Settings()
-    resolved_db_url = db_url if db_url is not None else settings.db_url
-
     try:
+        # Inside the guard for the same reason as in `scrape`: a malformed
+        # `SCRAPEWATCH_*` value is reported as "report failed: ...", not as a
+        # pydantic traceback.
+        settings = Settings()
+        resolved_db_url = db_url if db_url is not None else settings.db_url
+
         storage = Storage(resolved_db_url)
         storage.open()
 
@@ -184,10 +195,11 @@ def export(
         typer.echo(f"unknown format {fmt!r}: must be csv or json")
         raise typer.Exit(code=2)
 
-    settings = Settings()
-    resolved_db_url = db_url if db_url is not None else settings.db_url
-
     try:
+        # Inside the guard, as in `scrape` and `report`.
+        settings = Settings()
+        resolved_db_url = db_url if db_url is not None else settings.db_url
+
         storage = Storage(resolved_db_url)
         storage.open()
         storage.export(source, fmt, out)
@@ -196,6 +208,62 @@ def export(
         raise typer.Exit(code=1) from exc
 
     typer.echo(str(out))
+
+
+@app.command(name="record-scroll")
+def record_scroll(
+    demo_url: str | None = typer.Option(None, "--demo-url", help="Demo store URL. Defaults to SCRAPEWATCH_DEMO_URL."),
+    out: Path = typer.Option(Path("media"), "--out", help="Directory to write scroll.webm and scroll-trace.zip into."),
+) -> None:
+    """Record a browser walking the demo store's infinite scroll: one WebM and one trace.
+
+    Nothing else in this project produces that recording: `scrape` drives a browser
+    only for `quotes`, and `pytest -m live` drives none at all. The published page
+    wants the scroll specifically — it is the one thing here a reader can watch and
+    immediately understand — so this command exists to produce it, with fixed output
+    names (`scroll.webm`, `scroll-trace.zip`) so that the page and the publish step
+    never have to guess which file they mean.
+
+    Playwright names the video itself and only writes it when the context closes, so
+    the recording is made into a temporary directory and moved into place afterwards;
+    a run that produced no video or no trace fails here rather than leaving the page
+    to discover a missing file later.
+    """
+    try:
+        settings = Settings()
+        resolved_demo_url = (demo_url if demo_url is not None else settings.demo_url).rstrip("/")
+        out_dir = Path(out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        video_target = out_dir / "scroll.webm"
+        trace_target = out_dir / "scroll-trace.zip"
+
+        with tempfile.TemporaryDirectory(prefix="scrapewatch-scroll-") as tmp:
+            recording = Settings(
+                record_video=True,
+                video_dir=str(Path(tmp) / "videos"),
+                trace_dir=str(Path(tmp) / "traces"),
+            )
+            with BrowserSession(recording, trace_name="scroll") as session:
+                html = session.scroll_until(
+                    f"{resolved_demo_url}/scroll", item_selector=".product", done_selector='[data-done="true"]'
+                )
+            cards = len(HTMLParser(html).css(".product"))
+
+            videos = sorted(Path(recording.video_dir).glob("*.webm"))
+            if not videos:
+                raise RuntimeError(f"the browser wrote no recording into {recording.video_dir}")
+            trace_source = Path(recording.trace_dir) / "scroll.zip"
+            if not trace_source.is_file():
+                raise RuntimeError(f"the browser wrote no trace at {trace_source}")
+            shutil.move(str(videos[0]), video_target)
+            shutil.move(str(trace_source), trace_target)
+    except Exception as exc:  # a store that never answered, or a browser that recorded nothing
+        typer.echo(f"record-scroll failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(str(video_target))
+    typer.echo(str(trace_target))
+    typer.echo(f"{cards} products scrolled")
 
 
 @app.command(name="demo-store")

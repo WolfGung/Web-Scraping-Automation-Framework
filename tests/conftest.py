@@ -124,6 +124,23 @@ def _chromium_version() -> str:
         return "chromium"
 
 
+def _environment_key(name: str) -> str:
+    """The key this job writes its environment fact under.
+
+    Qualified by the CI job that wrote it, because the published report is built
+    from three jobs' results merged into one directory (the gate, the browser job
+    and the nightly live run — see `showcase/merge.py`), and they genuinely
+    disagree: the ones that drove a browser name it, the gate opens none. Unqualified
+    keys would make that a collision the merge cannot resolve, and the choice is
+    between failing the publication over a cosmetic difference and quietly dropping
+    whichever job's file was read last. Qualified, all three survive and the panel
+    says which job each fact came from. Locally `GITHUB_JOB` is unset and the keys
+    stay plain, because there is only one run to describe.
+    """
+    job = os.getenv("GITHUB_JOB")
+    return f"{job}.{name}" if job else name
+
+
 def _write_environment_properties(results_dir: Path) -> None:
     """The facts knowable at session start — everything except `browser`.
 
@@ -134,10 +151,10 @@ def _write_environment_properties(results_dir: Path) -> None:
     """
     settings = Settings()
     lines = [
-        f"db.url.scheme={urlsplit(settings.db_url).scheme}",
-        f"headless={settings.headless}",
-        f"python={sys.version.split()[0]}",
-        f"ci={os.getenv('GITHUB_ACTIONS', 'false')}",
+        f"{_environment_key('db.url.scheme')}={urlsplit(settings.db_url).scheme}",
+        f"{_environment_key('headless')}={settings.headless}",
+        f"{_environment_key('python')}={sys.version.split()[0]}",
+        f"{_environment_key('ci')}={os.getenv('GITHUB_ACTIONS', 'false')}",
     ]
     results_dir.mkdir(parents=True, exist_ok=True)
     (results_dir / "environment.properties").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -183,7 +200,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     results_dir = Path(alluredir)
     try:
         with (results_dir / "environment.properties").open("a", encoding="utf-8") as handle:
-            handle.write(f"browser={_chromium_version()}\n")
+            handle.write(f"{_environment_key('browser')}={_chromium_version()}\n")
     except Exception as exc:
         warnings.warn(f"could not append browser to environment.properties in {results_dir}: {exc!r}", stacklevel=2)
 

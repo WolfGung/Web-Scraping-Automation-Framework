@@ -60,3 +60,22 @@ def test_scrape_demo_writes_stats_and_report(tmp_path, demo_store_url) -> None:
     )
     assert result.exit_code == 0, result.output
     assert (tmp_path / "run-stats.json").is_file() and (tmp_path / "change-report.json").is_file()
+
+
+@pytest.mark.e2e
+def test_record_scroll_writes_the_recording_and_the_trace_the_page_publishes(tmp_path, demo_store_url) -> None:
+    """Что: `record-scroll` против живого демо-магазина.
+
+    Зачем: витрина публикует ровно два файла с фиксированными именами — запись
+    прокрутки и trace к ней; если команда назовёт их иначе или не доведёт прокрутку
+    до конца, страница молча опубликуется без видео.
+    Как: гоняем команду через CliRunner и проверяем оба файла и число карточек —
+    прокрутка обязана дойти до конца каталога, а не остановиться на первой странице.
+    """
+    result = CliRunner().invoke(
+        app, ["record-scroll", "--demo-url", demo_store_url, "--out", str(tmp_path / "media")]
+    )
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "media" / "scroll.webm").stat().st_size > 0
+    assert (tmp_path / "media" / "scroll-trace.zip").stat().st_size > 0
+    assert "40 products scrolled" in result.output

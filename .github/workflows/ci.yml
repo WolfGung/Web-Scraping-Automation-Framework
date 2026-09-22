@@ -1,0 +1,216 @@
+name: CI
+
+# Two different runs live in this file. Every push and pull request gets the
+# gate: lint and every test that needs no network. The night — and a manual run
+# with the box ticked — gets the rest: a probe of the practice sites, a real
+# scrape, a recording, the exports, the live checks, and the publication.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Run the live scrape and publish the showcase"
+        type: boolean
+        default: false
+
+jobs:
+  gate:
+    name: Lint, unit, parsers, integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests showcase scripts
+      - run: pytest -m "unit or parsers or integration" --alluredir=allure-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-gate
+          path: allure-results
+
+  e2e:
+    name: Browser engine and demo store
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+      - run: pytest -m e2e --alluredir=allure-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-e2e
+          path: allure-results
+
+  reachable:
+    # The practice sites belong to somebody else and cannot be brought up
+    # locally, so the night asks first and skips what does not answer, with the
+    # reason recorded, rather than reporting a failure they did not cause. Only
+    # the runs that are going to scrape need the answer, which is why this job is
+    # gated on the schedule and on the manual run that ticked `publish`.
+    name: Practice sites reachable from this runner
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    outputs:
+      books: ${{ steps.probe.outputs.books }}
+      quotes: ${{ steps.probe.outputs.quotes }}
+    steps:
+      - id: probe
+        run: |
+          for site in books quotes; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$site.toscrape.com/")
+            echo "$site=$code" >> "$GITHUB_OUTPUT"
+            echo "$site.toscrape.com answered HTTP $code"
+            [ "$code" = "200" ] || echo "::notice title=$site skipped::$site.toscrape.com answered HTTP $code; that source is skipped tonight, the others still run."
+          done
+
+  live:
+    name: Nightly live scrape
+    runs-on: ubuntu-latest
+    needs: [gate, e2e, reachable]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+
+      - name: Restore the database from the previous publication
+        # Without it every night is a first night and every record is reported as
+        # added, because a runner starts with an empty checkout.
+        run: bash scripts/restore-db.sh
+
+      - name: Start the demo store
+        # `scrape all` includes the demo source, and the demo store is a server
+        # this repository ships rather than a site out on the internet: nothing
+        # starts it unless this job does, and without it the source would be
+        # skipped with a connection error as its reason.
+        run: |
+          nohup scrapewatch demo-store --port 8765 > demo-store.log 2>&1 &
+          for _ in $(seq 30); do
+            if curl -fs "http://127.0.0.1:8765/api/products?page=1" > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "${ready:-}" != "1" ]; then
+            echo "the demo store did not answer within 30s"
+            cat demo-store.log
+            exit 1
+          fi
+
+      - name: Scrape every source that answered
+        # The probe's answer becomes flags here rather than in the `run:` line
+        # above, because `--skip-books=${{ ... }}` is not how the flag is spelled:
+        # it is a boolean switch that takes no value, so the shell composes it.
+        run: |
+          FLAGS=""
+          [ "${{ needs.reachable.outputs.books }}" = "200" ] || FLAGS="$FLAGS --skip-books"
+          [ "${{ needs.reachable.outputs.quotes }}" = "200" ] || FLAGS="$FLAGS --skip-quotes"
+          # shellcheck disable=SC2086 # FLAGS is a list of switches, not one word
+          scrapewatch scrape all --out data/run $FLAGS
+        env:
+          SCRAPEWATCH_RECORD_VIDEO: "true"
+
+      - name: Record the scroll the page publishes
+        # Nothing in `scrape all` or in the live checks scrolls anything, so the
+        # recording the published page shows is produced here, deliberately, with
+        # the fixed names the page and the publish step expect.
+        run: scrapewatch record-scroll --out media
+
+      - name: Export the snapshots
+        # Each export is guarded by the same probe the scrape was: a source that
+        # was not collected tonight has only an older snapshot in the database,
+        # and publishing that under tonight's date would be a quiet lie.
+        run: |
+          mkdir -p data/exports
+          if [ "${{ needs.reachable.outputs.books }}" = "200" ]; then
+            scrapewatch export books --format csv --out data/exports/books.csv
+            scrapewatch export books --format json --out data/exports/books.json
+          fi
+          if [ "${{ needs.reachable.outputs.quotes }}" = "200" ]; then
+            scrapewatch export quotes --format json --out data/exports/quotes.json
+          fi
+          scrapewatch export demo --format json --out data/exports/demo.json
+
+      - name: Check the live sites against the parsers
+        # Not allowed to stop the job: a red live check is the drift signal this
+        # project exists to produce, and it must not cost the night's collection.
+        # The published page states it instead of hiding it.
+        run: pytest -m live --alluredir=allure-results
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-output
+          path: |
+            data
+            media
+            videos
+            traces
+            allure-results
+
+  showcase:
+    name: Publish showcase
+    runs-on: ubuntu-latest
+    needs: live
+    # Two gates, and no third one. The branch is gated here; the run being green
+    # is gated by `needs`, which holds this job back until the gate, the browser
+    # job and the live job have all finished — and `live` in turn needs both of
+    # the other two, so a red gate cannot replace the published page with itself.
+    # A pull request never reaches this job: its `github.ref` is
+    # `refs/pull/<n>/merge`, not this branch.
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    concurrency:
+      group: showcase-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      # All three results directories, so the report and the test figures on the
+      # page cover the whole suite rather than only the leg that scraped.
+      - uses: actions/download-artifact@v4
+        with:
+          name: allure-results-gate
+          path: allure-results-gate
+      - uses: actions/download-artifact@v4
+        with:
+          name: allure-results-e2e
+          path: allure-results-e2e
+      - uses: actions/download-artifact@v4
+        with:
+          name: live-output
+          path: .
+      # No Allure installation step: `scripts/publish-showcase.sh` resolves the
+      # command line itself — an explicit `ALLURE_CMD`, then an `allure` on PATH,
+      # then `npx allure-commandline`, which is what a GitHub runner lands on.
+      - name: Assemble and publish
+        run: bash scripts/publish-showcase.sh
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

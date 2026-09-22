@@ -222,10 +222,15 @@ docs/notes/
 
 # scrapewatch project-specific
 .venv/
-allure-results/
+allure-results*/
 allure-report/
 site/
 videos/
 traces/
+media/
 *.sqlite3
 data/
+# the two worktrees scripts/publish-showcase.sh uses while it assembles the site
+published/
+publish-tree/
+publish-data/
