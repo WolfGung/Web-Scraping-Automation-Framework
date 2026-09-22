@@ -53,3 +53,12 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["scrapewatch", "showcase"]
+
+[tool.ruff.lint.flake8-bugbear]
+# typer.Option()/typer.Argument() are evaluated once at import time by design —
+# that is how Typer builds its CLI — so a `Path`-annotated option whose default is
+# `typer.Option(Path("data/run"), ...)` is not the mutable-default-argument bug
+# B008 exists to catch. `str`/`int`/`bool`/`None` defaults are already exempt
+# because those parameter types are immutable; this extends the same exemption to
+# the `Path`-annotated ones in `cli.py`.
+extend-immutable-calls = ["typer.Option", "typer.Argument"]

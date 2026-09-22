@@ -20,3 +20,6 @@ class Settings(BaseSettings):
     video_dir: str = "videos"
     trace_dir: str = "traces"
     headless: bool = True
+    #: Base URL of the demo store: what `scrape demo` reads from and `demo-store` serves
+    #: on. Compose points this at the `demo-store` service; a local run at loopback.
+    demo_url: str = "http://127.0.0.1:8765"

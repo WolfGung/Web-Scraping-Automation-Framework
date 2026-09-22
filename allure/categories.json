@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Product or site defect",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*AssertionError.*"
+  },
+  {
+    "name": "Timeout",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "(?i).*(timeout|timed out).*"
+  },
+  {
+    "name": "Markup drift",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "(?!.*AssertionError).*(not found|ValueError).*"
+  },
+  {
+    "name": "Infrastructure",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "(?i)(?!.*(timeout|timed out)).*(Connect|ERR_|502|503|504|ConnectionRefused|ReadTimeout).*"
+  }
+]
