@@ -16,9 +16,8 @@ catalogue turns over naturally at midnight.
 from __future__ import annotations
 
 from datetime import date
-from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from scrapewatch.demo_store.catalogue import catalogue_for, member_price_for
@@ -171,14 +170,8 @@ def create_app(today: date | None = None) -> FastAPI:
         return _login_page()
 
     @app.post("/login")
-    async def login_submit(request: Request):
-        # Parsed by hand from the raw body rather than FastAPI's `Form(...)`: that
-        # dependency requires the optional `python-multipart` package to even be
-        # importable, for urlencoded bodies as much as multipart ones, and this demo
-        # login needs nothing beyond two plain fields.
-        body = (await request.body()).decode("utf-8")
-        fields = dict(parse_qsl(body))
-        if fields.get("username") == DEMO_USERNAME and fields.get("password") == DEMO_PASSWORD:
+    def login_submit(username: str = Form(...), password: str = Form(...)):
+        if username == DEMO_USERNAME and password == DEMO_PASSWORD:
             response = RedirectResponse(url="/members", status_code=302)
             response.set_cookie(SESSION_COOKIE, "1")
             return response

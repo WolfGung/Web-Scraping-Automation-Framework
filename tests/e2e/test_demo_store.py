@@ -20,3 +20,22 @@ def test_members_page_needs_a_login(demo_store_url: str) -> None:
     import httpx
 
     assert httpx.get(f"{demo_store_url}/members", follow_redirects=False).status_code == 302
+
+
+def test_logging_in_unlocks_the_members_page_with_its_prices(demo_store_url: str) -> None:
+    import httpx
+
+    response = httpx.post(
+        f"{demo_store_url}/login",
+        data={"username": "demo", "password": "demo"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.cookies.get("demo_session") == "1"
+
+    members = httpx.get(f"{demo_store_url}/members", cookies=response.cookies)
+    assert members.status_code == 200
+    assert "member-price" in members.text
+
+    rejected = httpx.post(f"{demo_store_url}/login", data={"username": "demo", "password": "wrong"})
+    assert rejected.status_code == 401
