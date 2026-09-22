@@ -28,7 +28,8 @@ def test_it_identifies_itself() -> None:
     assert "scrapewatch" in seen["ua"] and "github.com/WolfGung" in seen["ua"]
 
 
-def test_it_retries_a_5xx_and_counts_the_retry() -> None:
+def test_it_retries_a_5xx_and_counts_the_retry(monkeypatch) -> None:
+    monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
     calls = {"n": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -40,7 +41,9 @@ def test_it_retries_a_5xx_and_counts_the_retry() -> None:
     assert client.stats.requests == 2 and client.stats.retries == 1
 
 
-def test_it_gives_up_after_max_retries() -> None:
+def test_it_gives_up_after_max_retries(monkeypatch) -> None:
+    monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500)
 
@@ -90,3 +93,36 @@ def test_a_missing_robots_txt_allows_everything() -> None:
         return httpx.Response(404) if request.url.path == "/robots.txt" else httpx.Response(200, text="ok")
 
     assert _client(handler).allowed("https://example.test/anything") is True
+
+
+def test_the_robots_fetch_is_a_request_like_any_other() -> None:
+    """It must wait its turn and count against stats, not bypass the client's own politeness."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="User-agent: *\nDisallow:\n")
+
+    client = _client(handler)
+    client.allowed("https://example.test/anything")
+    assert client.stats.requests == 1
+
+
+def test_a_5xx_robots_txt_refuses_with_a_reason_after_retries(monkeypatch) -> None:
+    monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503)
+
+    client = _client(handler)
+    assert client.allowed("https://example.test/anything") is False
+    assert client.robots_refusal_reason
+
+
+def test_an_unreachable_robots_txt_refuses_with_a_reason(monkeypatch) -> None:
+    monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    client = _client(handler)
+    assert client.allowed("https://example.test/anything") is False
+    assert client.robots_refusal_reason

@@ -27,6 +27,19 @@ class FetchStats:
     hosts: dict[str, int] = field(default_factory=dict)
 
 
+@dataclass
+class _RobotsState:
+    """What we know about one origin's robots.txt.
+
+    ``unreachable_reason`` is set only when the file's rules could not be determined at
+    all (a 5xx that survived retries, or a transport failure) — never for an ordinary
+    404, which just means there is no file and nothing is restricted.
+    """
+
+    parser: robotparser.RobotFileParser | None
+    unreachable_reason: str | None = None
+
+
 class PoliteClient:
     def __init__(self, settings: Settings, transport: httpx.BaseTransport | None = None) -> None:
         self._settings = settings
@@ -37,8 +50,11 @@ class PoliteClient:
             transport=transport,
         )
         self._last_request_at: dict[str, float] = {}
-        self._robots: dict[str, robotparser.RobotFileParser | None] = {}
+        self._robots: dict[str, _RobotsState] = {}
         self.stats = FetchStats()
+        #: Why the most recent `allowed()` call returned False because robots.txt could
+        #: not be read — None when it was allowed, or refused by an actual Disallow rule.
+        self.robots_refusal_reason: str | None = None
 
     # -- politeness -------------------------------------------------------
 
@@ -51,23 +67,49 @@ class PoliteClient:
         self._last_request_at[host] = time.monotonic()
 
     def allowed(self, url: str) -> bool:
+        """Whether ``url`` may be fetched under its origin's robots.txt.
+
+        A site with no robots.txt (404, or any other 4xx) allows everything. A site
+        whose robots.txt could not be read at all — a 5xx that survived retries, or a
+        dropped connection — is treated as disallowed: a polite scraper that cannot
+        read the rules does not guess that there are none. See `robots_refusal_reason`
+        for why, in that case.
+        """
         parts = urlsplit(url)
         origin = f"{parts.scheme}://{parts.netloc}"
         if origin not in self._robots:
             self._robots[origin] = self._load_robots(origin)
-        parser = self._robots[origin]
-        return True if parser is None else parser.can_fetch(self._settings.user_agent, url)
+        state = self._robots[origin]
+        if state.unreachable_reason is not None:
+            self.robots_refusal_reason = state.unreachable_reason
+            return False
+        self.robots_refusal_reason = None
+        if state.parser is None:
+            return True
+        return state.parser.can_fetch(self._settings.user_agent, url)
 
-    def _load_robots(self, origin: str) -> robotparser.RobotFileParser | None:
+    def _load_robots(self, origin: str) -> _RobotsState:
+        # Goes through `get()`, not the raw transport: the robots.txt fetch is a
+        # request like any other, so it waits its turn, counts against stats, and
+        # gets the same retries on a server error.
         try:
-            response = self._http.get(f"{origin}/robots.txt")
-        except httpx.HTTPError:
-            return None
-        if response.status_code != 200:
-            return None  # no robots.txt means no restrictions, which is what the practice sites have
+            response = self.get(f"{origin}/robots.txt")
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if 400 <= status < 500:
+                return _RobotsState(parser=None)  # no robots.txt: nothing restricts us
+            return _RobotsState(
+                parser=None,
+                unreachable_reason=f"robots.txt at {origin} returned HTTP {status} after retries",
+            )
+        except httpx.TransportError as exc:
+            return _RobotsState(
+                parser=None,
+                unreachable_reason=f"robots.txt at {origin} was unreachable: {exc}",
+            )
         parser = robotparser.RobotFileParser()
         parser.parse(response.text.splitlines())
-        return parser
+        return _RobotsState(parser=parser)
 
     # -- fetching ---------------------------------------------------------
 
