@@ -110,6 +110,10 @@ Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.
 
 The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
 
+[![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
+
+That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
+
 ## What it deliberately does not do
 
 Plainly, because these are choices and not gaps:
