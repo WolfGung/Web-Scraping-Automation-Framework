@@ -51,6 +51,61 @@ def test_scrape_reports_a_bad_db_url_instead_of_a_traceback() -> None:
     assert "Traceback" not in result.output
 
 
+class _RecordingBooksSource:
+    """Stands in for `BooksSource` so the CLI's own wiring can be tested without a site.
+
+    It satisfies the `Source` protocol and collects nothing, which is all
+    `run_sources` needs to complete: the question here is only what the command line
+    built, not what the source would have fetched.
+    """
+
+    built: list[bool] = []
+
+    name = "books"
+    kind = "http"
+
+    def __init__(self, client, base_url: str = "https://books.invalid", max_pages=None, with_details: bool = False):
+        type(self).built.append(with_details)
+
+    def fetch(self):
+        return iter(())
+
+    @property
+    def stats(self) -> dict:
+        return {"pages": 0, "records": 0, "requests": 0, "retries": 0, "bytes": 0, "seconds": 0.0}
+
+
+@pytest.fixture
+def books_source_built(monkeypatch) -> list[bool]:
+    """Every `with_details` the CLI handed `BooksSource` during one test."""
+    monkeypatch.setattr("scrapewatch.cli.BooksSource", _RecordingBooksSource)
+    _RecordingBooksSource.built = []
+    return _RecordingBooksSource.built
+
+
+def _scrape_books(tmp_path, *extra: str):
+    return CliRunner().invoke(
+        app,
+        ["scrape", "books", "--out", str(tmp_path), "--db-url", f"sqlite:///{tmp_path}/db.sqlite3", *extra],
+    )
+
+
+@pytest.mark.unit
+def test_the_detail_pages_are_not_bought_unless_they_are_asked_for(tmp_path, books_source_built) -> None:
+    """Off by default: a thousand extra requests to somebody else's site is a decision."""
+    result = _scrape_books(tmp_path)
+    assert result.exit_code == 0, result.output
+    assert books_source_built == [False]
+
+
+@pytest.mark.unit
+def test_books_details_reaches_the_source_when_it_is_asked_for(tmp_path, books_source_built) -> None:
+    """And the path is reachable: the flag is what turns `with_details` on."""
+    result = _scrape_books(tmp_path, "--books-details")
+    assert result.exit_code == 0, result.output
+    assert books_source_built == [True]
+
+
 @pytest.mark.e2e
 def test_scrape_demo_writes_stats_and_report(tmp_path, demo_store_url) -> None:
     result = CliRunner().invoke(

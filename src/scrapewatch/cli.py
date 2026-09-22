@@ -100,12 +100,18 @@ def _browser_session_for(names: list[str], settings: Settings) -> AbstractContex
 
 
 def _build_sources(
-    names: list[str], client: PoliteClient, session: BrowserSession | None, *, max_pages: int | None, demo_url: str
+    names: list[str],
+    client: PoliteClient,
+    session: BrowserSession | None,
+    *,
+    max_pages: int | None,
+    demo_url: str,
+    books_details: bool = False,
 ) -> list[Source]:
     sources: list[Source] = []
     for name in names:
         if name == "books":
-            sources.append(BooksSource(client, max_pages=max_pages))
+            sources.append(BooksSource(client, max_pages=max_pages, with_details=books_details))
         elif name == "quotes":
             sources.append(QuotesSource(session, client, max_pages=max_pages))
         elif name == "demo":
@@ -202,6 +208,11 @@ def scrape(
     db_url: str | None = typer.Option(None, "--db-url", help="Storage URL. Defaults to SCRAPEWATCH_DB_URL."),
     max_pages: int | None = typer.Option(None, "--max-pages", help="Cap on pages walked (books and quotes)."),
     demo_url: str | None = typer.Option(None, "--demo-url", help="Demo store URL. Defaults to SCRAPEWATCH_DEMO_URL."),
+    books_details: bool = typer.Option(
+        False,
+        "--books-details",
+        help="Also fetch each book's own page, for its category. Costs one request per book.",
+    ),
     skip_books: bool = typer.Option(False, "--skip-books", help="Drop books from 'all' (CI reachability probe)."),
     skip_quotes: bool = typer.Option(False, "--skip-quotes", help="Drop quotes from 'all' (CI reachability probe)."),
     skip_reason_books: str | None = typer.Option(
@@ -217,7 +228,13 @@ def scrape(
         DEFAULT_KEEP_SNAPSHOTS, "--keep-snapshots", help="Snapshots kept per source; older ones are deleted."
     ),
 ) -> None:
-    """Fetch one source (or all of them), snapshot it, diff it against the last run, and report."""
+    """Fetch one source (or all of them), snapshot it, diff it against the last run, and report.
+
+    `--books-details` is off by default, and the default is the point: a book's own
+    page adds one field, its category, for one more request per book. A thousand
+    extra requests to somebody else's server, for a column nothing here compares, is
+    not a cost this project makes them pay unless it is asked to.
+    """
     names = _resolved_sources(source, skip_books=skip_books, skip_quotes=skip_quotes)
     if names is None:
         typer.echo(_unknown_source_message(source))
@@ -243,7 +260,14 @@ def scrape(
         storage = Storage(resolved_db_url)
         storage.open()
         with PoliteClient(settings) as client, _browser_session_for(names, settings) as session:
-            sources = _build_sources(names, client, session, max_pages=max_pages, demo_url=resolved_demo_url)
+            sources = _build_sources(
+                names,
+                client,
+                session,
+                max_pages=max_pages,
+                demo_url=resolved_demo_url,
+                books_details=books_details,
+            )
             result = run_sources(sources, storage, out)
 
         # Everything below is part of producing this run's outputs, so it shares the

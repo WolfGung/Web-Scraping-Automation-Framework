@@ -28,6 +28,8 @@ Last night's run is published whole, not summarised:
 
 The second row is a claim, so it is proven rather than asserted. [`tests/fixtures/quotes/js.html`](tests/fixtures/quotes/js.html) is that page as plain HTTP fetches it, saved to disk; [`test_the_unrendered_js_page_has_no_quotes_in_its_html`](tests/parsers/test_quotes_parser.py) runs the parser over it and finds nothing at all, and the next test runs the same parser over what a browser rendered and finds every quote. A browser is started where the markup is built by script, and nowhere else.
 
+The listing pages carry everything the diff compares, and nothing else: no category, and no stock count — those live on each book's own page. Fetching all of them would be 1000 more requests to somebody else's server for one field nothing here compares, so this project does not buy them by default. `scrapewatch scrape books --books-details` does, for anyone who wants the category; the flag exists because the path is real and proven, and the default exists because the cost is somebody else's.
+
 The third row is the honest part. Both practice sites are fixed teaching catalogues that do not change: a monitor pointed only at them would report "no change" every night for ever, which proves nothing about the monitor. So this repository ships a store of its own — a FastAPI application whose prices and stock move every day by a rule seeded from the date ([`demo_store/catalogue.py`](src/scrapewatch/demo_store/catalogue.py)) — and the published change report has real movement to name. The same date always produces the same catalogue, so a second run on one day correctly reports nothing new.
 
 ## Politeness is code, not a promise
@@ -45,7 +47,7 @@ A refusal is not a crash: the source is skipped, the run continues, and `run-sta
 
 [![Four bands. The three doors and the sites they reach; the pipeline underneath them in five steps - validate, normalise, snapshot, diff, report; storage as SQLAlchemy over SQLite or PostgreSQL; and at the bottom what a night leaves behind: the exports, the change report, the Allure report and the published page.](showcase/assets/architecture.svg)](showcase/assets/architecture.svg)
 
-One path, whatever the door: a source yields raw records, [`pipeline/run.py`](src/scrapewatch/pipeline/run.py) validates them against a typed model, normalises them into comparable fields (a price becomes a `Decimal` and a currency, `In stock (22 available)` becomes a flag and a count), writes the snapshot, diffs it against the previous snapshot of the same source, and reports what moved. One malformed record is counted and isolated rather than discarding the fetch around it; one broken source is recorded as skipped rather than aborting the night.
+One path, whatever the door: a source yields raw records, [`pipeline/run.py`](src/scrapewatch/pipeline/run.py) validates them against a typed model, normalises them into comparable fields (a price becomes a `Decimal` and a currency, `In stock` becomes a flag, a rating word becomes a number), writes the snapshot, diffs it against the previous snapshot of the same source, and reports what moved. One malformed record is counted and isolated rather than discarding the fetch around it; one broken source is recorded as skipped rather than aborting the night.
 
 [![Two lanes. The gate, run on every push and pull request and touching no network: lint, then the checks that need no site, then the browser check. The night, run on a schedule: probe the practice sites, restore the database from the last publication, scrape and export, record the scroll, run the live checks, then merge every job's results and publish the page. Underneath, the database being carried from one night to the next.](showcase/assets/pipeline.svg)](showcase/assets/pipeline.svg)
 
@@ -99,12 +101,12 @@ Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 214 | none |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 217 | none |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 24 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 257 | none |
+| the gate, `pytest -m "not live"` | the four rows above it | 260 | none |
 
 The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
 

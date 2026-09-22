@@ -1,11 +1,11 @@
 """Turn what a page said into what a database can compare.
 
-Different sources speak differently — a bookshop prices in symbols and counts stock in
-a sentence, a quotes site just has text and tags, a demo store speaks the same symbol
-prices but already hands back a stock flag and a count directly. ``normalize`` is the
-one seam all three squeeze through: an unparsable price, an unrecognised rating word,
-or a missing field all fail the same way — a ``ValueError`` naming exactly the field
-that could not be trusted.
+Different sources speak differently — a bookshop prices in symbols and says whether a
+book is in stock in a sentence, a quotes site just has text and tags, a demo store
+speaks the same symbol prices but already hands back a stock flag and a real count.
+``normalize`` is the one seam all three squeeze through: an unparsable price, an
+unrecognised rating word, or a missing field all fail the same way — a ``ValueError``
+naming exactly the field that could not be trusted.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from scrapewatch.models import RawRecord, Record
 #: First character of a price string tells us the currency; anything else is unparsable.
 _CURRENCY_SYMBOLS = {"£": "GBP", "$": "USD", "€": "EUR"}
 _RATING_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
-_AVAILABLE_RE = re.compile(r"(\d+)\s*available", re.IGNORECASE)
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
@@ -80,20 +79,18 @@ def _parse_price(value: Any) -> tuple[Decimal, str]:
     return amount, currency
 
 
-def _parse_availability(value: Any) -> tuple[bool, int | None]:
-    """Read the flag and, when the page bothers to say, the count.
+def _parse_availability(value: Any) -> bool:
+    """Read whether the page says the thing is in stock. A flag, and only a flag.
 
-    A listing page usually just says "In stock" or "Out of stock" — the count only
-    shows up on a detail page. Unknown is not zero: when no number is present the
-    count is ``None``, not ``0``, so a later fetch that fills it in reads as a real
-    gain rather than a no-op.
+    The bookshop's listing pages — which is what this project reads, a thousand books
+    at a time — say "In stock" and nothing more; the number only ever appears on an
+    individual book's own page. A count read from one page and unknown on every other
+    is a column of nulls, so books carry the flag and stop there. The demo store's API
+    hands back a real integer, and that one is kept (see ``_normalize_demo``).
     """
     if not isinstance(value, str):
         raise ValueError(f"availability: cannot parse {value!r}")
-    in_stock = "in stock" in value.lower()
-    match = _AVAILABLE_RE.search(value)
-    stock = int(match.group(1)) if match else None
-    return in_stock, stock
+    return "in stock" in value.lower()
 
 
 def _parse_rating(value: Any) -> int:
@@ -118,16 +115,20 @@ def _parse_int(value: Any, field_name: str) -> int:
 
 
 def _normalize_book(fields: dict[str, Any]) -> dict[str, Any]:
+    """A book's comparable fields. ``category`` only when the detail page was read.
+
+    There is no ``stock`` here on purpose: see ``_parse_availability``. ``category``
+    is optional because it lives on a book's own page, which
+    ``BooksSource(with_details=True)`` is the only thing that fetches.
+    """
     title = _clean_text(_require(fields, "title"), "title", required=True)
     price, currency = _parse_price(_require(fields, "price"))
-    in_stock, stock = _parse_availability(_require(fields, "availability"))
     rating = _parse_rating(_require(fields, "rating"))
     out: dict[str, Any] = {
         "title": title,
         "price": price,
         "currency": currency,
-        "in_stock": in_stock,
-        "stock": stock,
+        "in_stock": _parse_availability(_require(fields, "availability")),
         "rating": rating,
     }
     category = fields.get("category")
