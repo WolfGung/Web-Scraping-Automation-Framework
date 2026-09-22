@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web Scraping Automation Framework — a fragment of the collected data</title>
+<!--
+  Source of `showcase/images/data-sample.png`, exported by scripts/make-assets.py
+  at exactly 1536x600.
+
+  This file is the plate only: the caption, the frame and the type. The table
+  itself is not written here — the exporter builds it from
+  `showcase/assets/books-sample.csv`, which is the head of the `books.csv` this
+  project publishes, kept exactly as the file spells it. Column names, order and
+  values therefore come from the data rather than from a hand-written copy of
+  it, and a column that was renamed changes the picture instead of quietly
+  disagreeing with it.
+
+  The two numbers in the caption are pinned by
+  tests/unit/test_showcase_figures.py: the rows shown against the rows that CSV
+  actually holds, and the catalogue against `scrapewatch.sources.FULL_RUN_SIZES`.
+  A sample that gained a row, or a catalogue that changed size, fails the build
+  here instead of leaving a caption that counts something nobody re-counts.
+
+  The light plate is the cover's family inverted — the same type, the same teal,
+  the same navy ink — because this is a picture of a file rather than a poster.
+  No network is used at render time and no web font is fetched: the type is a
+  system stack, as on the cover.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --face: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    --navy: #0b2247;
+    --ink: #17324f;
+    --muted: #5b7899;
+    --teal: #0f9e88;
+    --line: #d7e3f2;
+    --band: #f1f6fd;
+    --zebra: #f7fafe;
+  }
+
+  body {
+    width: 1536px;
+    height: 600px;
+    overflow: hidden;
+    padding: 22px;
+    background: #e9f0f9;
+    font-family: var(--face);
+    color: var(--ink);
+  }
+
+  .plate {
+    height: 100%;
+    padding: 20px 24px 18px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 1px 0 rgba(11, 34, 71, 0.04);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The caption: what the file is called, and what part of it this is. */
+  .caption { display: flex; align-items: baseline; gap: 18px; flex: none; }
+  .file {
+    font-family: var(--mono);
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+  }
+  .file::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 11px;
+    border-radius: 3px;
+    background: var(--teal);
+  }
+  .sub { font-size: 19px; font-weight: 600; color: var(--muted); }
+  .sub .stat-n { font-family: var(--mono); font-weight: 800; color: var(--navy); }
+  .sub .stat-u, .sub .stat-of { color: var(--muted); }
+
+  /* The table: figures in monospace, so the columns line up down the page the
+     way they line up in the file. */
+  .grid {
+    margin-top: 16px;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  .grid th {
+    height: 34px;
+    padding: 0 10px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #43648b;
+    background: var(--band);
+    border-bottom: 2px solid var(--teal);
+  }
+  .grid th:first-child { border-top-left-radius: 8px; }
+  .grid th:last-child { border-top-right-radius: 8px; }
+  .grid td {
+    height: 34px;
+    padding: 0 10px;
+    border-bottom: 1px solid #eaf1f9;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .grid tbody tr:nth-child(even) td { background: var(--zebra); }
+
+  /* One width per column of books.csv, in the order the file writes them:
+     currency, in_stock, price, rating, title, external_id, url. The two long
+     identifiers are given what is left and clipped with an ellipsis; the file
+     carries them whole. */
+  .grid th:nth-child(1), .grid td:nth-child(1) { width: 88px; }
+  .grid th:nth-child(2), .grid td:nth-child(2) { width: 94px; }
+  .grid th:nth-child(3), .grid td:nth-child(3) { width: 92px; text-align: right; }
+  .grid th:nth-child(4), .grid td:nth-child(4) { width: 84px; text-align: right; }
+  .grid th:nth-child(5), .grid td:nth-child(5) { width: 424px; }
+  .grid th:nth-child(6), .grid td:nth-child(6) { width: 306px; }
+  .grid th:nth-child(3), .grid th:nth-child(4) { text-align: right; }
+  .grid td:nth-child(6), .grid td:nth-child(7) { color: #506e90; }
+
+  .note {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 16px;
+    color: var(--muted);
+  }
+  .note b { color: var(--navy); font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="plate">
+    <p class="caption">
+      <span class="file">data/books.csv</span>
+      <span class="sub"><span class="stat"><b class="stat-n rows-shown">12</b>
+        <span class="stat-u">rows</span> <span class="stat-of">shown</span></span>
+        of the <span class="stat"><b class="stat-n">1000</b>
+        <span class="stat-u">books</span> <span class="stat-of">a full run collects</span></span></span>
+    </p>
+
+    <!-- the table the exporter builds from showcase/assets/books-sample.csv -->
+
+    <p class="note">The head of the file this project publishes after every run,
+      column names and values as the file spells them. Long identifiers are
+      clipped to fit the plate; <b>the published file carries them whole</b>.</p>
+  </div>
+</body>
+</html>

@@ -8,20 +8,22 @@ seconds and never checks it against the repository, so a catalogue that changed
 size, or a check that was added, has to fail the build here rather than quietly
 make a picture lie.
 
-Three sources state those numbers today: the two hand-drawn SVG figures under
-`showcase/assets/`, and `cover.html`, the template `guru-cover-image.png` is
-exported from. Each kind is read the way it is written — a count in an SVG is a
-line of text inside a box, a count on the cover is an element carrying the
-classes this reader looks for — and each one is compared against the thing it
-claims to describe: `scrapewatch.sources` for the catalogue sizes,
-`showcase.build.RETENTION_NIGHTS` for the history, and `pytest --collect-only`
-for anything counting checks.
+Four sources state those numbers today: the two hand-drawn SVG figures under
+`showcase/assets/`, `cover.html`, the template `guru-cover-image.png` is
+exported from, and `data-sample.html`, the plate the README's fragment of the
+collected data is exported from. Each kind is read the way it is written — a
+count in an SVG is a line of text inside a box, a count on the cover or the
+plate is an element carrying the classes this reader looks for — and each one
+is compared against the thing it claims to describe: `scrapewatch.sources` for
+the catalogue sizes, `showcase.build.RETENTION_NIGHTS` for the history, the
+sample CSV itself for the rows the plate shows, and `pytest --collect-only` for
+anything counting checks.
 
 Two further guards sit underneath. Nothing here may pass by finding nothing: a
 reader that came back empty is a failure, and every count found has to be one
-this module checks. And no digit may appear in any of the three files that this
-module does not account for, so a number added to a drawing cannot escape by
-being written in a shape the structured readers do not recognise.
+this module checks. And no digit may appear in any of those four files that
+this module does not account for, so a number added to a drawing cannot escape
+by being written in a shape the structured readers do not recognise.
 
 The last section pins facts the code itself keeps in two places, for the same
 reason: two copies of one truth drift, and the cheapest moment to hear about it
@@ -29,6 +31,7 @@ is here.
 """
 from __future__ import annotations
 
+import csv
 import os
 import re
 import shlex
@@ -47,7 +50,7 @@ import pytest
 
 from scrapewatch.demo_store.catalogue import catalogue_for
 from scrapewatch.sources import BOOKS_PAGE_SIZE, FULL_RUN_SIZES, KNOWN_SOURCES
-from showcase.build import DATABASE_FILE, RETENTION_NIGHTS
+from showcase.build import DATA_FILES, DATABASE_FILE, RETENTION_NIGHTS
 
 pytestmark = pytest.mark.unit
 
@@ -62,7 +65,17 @@ FIGURES = ("architecture.svg", "pipeline.svg")
 #: visitor to the profile sees, it is a picture rather than text, and nobody
 #: re-reads a picture to check whether it still adds up.
 COVER = "cover.html"
-SOURCES = (*FIGURES, COVER)
+
+#: The plate `showcase/images/data-sample.png` is exported from — the fragment of
+#: collected data the README shows — and the file whose rows that plate draws:
+#: the head of the published `books.csv`, kept exactly as that file spells it.
+#: The plate's caption says how much of the catalogue is on it, and both of its
+#: numbers are read here: the rows against the sample that supplies them, the
+#: catalogue against the size the code states.
+PLATE = "data-sample.html"
+SAMPLE = "books-sample.csv"
+
+SOURCES = (*FIGURES, COVER, PLATE)
 
 #: A line of a drawing that states a count: a number, then what is being counted.
 #: "50 catalogue pages" and "3 cases" are both this shape; "cron 0 5 * * *" is
@@ -78,14 +91,15 @@ DIGITS = re.compile(r"\d")
 #: means the subprocess actually hung.
 COLLECT_TIMEOUT_SECONDS = 60
 
-#: What to do when a number no longer matches, per kind of source.
+#: What to do when a number no longer matches. Keyed by the file, and by the kind
+#: of file for the drawings, which are all fixed the same way.
 FIX = {
     ".svg": (
         "The figure is hand-drawn SVG: edit the number in showcase/assets/{source}, "
         "and check its <desc> — the description a screen reader hears states the same "
         "numbers, and both figures quote some of them."
     ),
-    ".html": (
+    "cover.html": (
         "The cover is exported from showcase/assets/{source}, so edit the number there "
         "and export again — the image is not edited by hand:\n"
         '  pytest -m "unit or parsers or integration or e2e" --alluredir=allure-results\n'
@@ -94,11 +108,43 @@ FIX = {
         "then `git add guru-cover-image.png`: the exported image is a tracked file, and "
         "a template nobody exported changes nothing the profile shows."
     ),
+    "data-sample.html": (
+        "The plate is exported from showcase/assets/{source}, and its table is drawn "
+        "from showcase/assets/books-sample.csv — the head of the published books.csv. "
+        "Edit the caption there, or refresh the sample, and export again:\n"
+        "  PYTHONPATH=. python scripts/make-assets.py --only data\n"
+        "then `git add showcase/images/data-sample.png`: the exported image is a "
+        "tracked file, and a plate nobody exported changes nothing the README shows."
+    ),
 }
 FIX_DEFAULT = "Edit the number in {source} so that it states what the code holds."
 
-#: Every number a drawing or the cover states about a catalogue, a history or a
-#: sum, with the value the code holds for it. The key is the file, the box or
+
+def _fix(source: str) -> str:
+    """What to tell whoever has to make a number right again."""
+    return FIX.get(source, FIX.get(Path(source).suffix, FIX_DEFAULT)).format(source=source)
+
+@cache
+def _sample_rows() -> int:
+    """How many rows the plate actually shows, counted in the file it draws them from.
+
+    The exporter builds that table out of this CSV, so the file is the only
+    honest answer to "how many rows are on the picture" — and the caption, which
+    a reader takes on trust, is checked against it.
+    """
+    with (ASSETS / SAMPLE).open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows, (
+        f"showcase/assets/{SAMPLE} holds no data rows, so the plate exported from "
+        f"{_path(PLATE)} would show an empty table under a caption counting nothing. "
+        f"It is the head of the published books.csv; refresh it from "
+        f"https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv"
+    )
+    return len(rows)
+
+
+#: Every number a drawing, the cover or the plate states about a catalogue, a
+#: history or a sum, with the value the code holds for it. The key is the file, the box or
 #: card the number sits in, and what it counts — so a number moved into the
 #: wrong box is a failure here rather than something plausible.
 CLAIMS: dict[tuple[str, str, str], int] = {
@@ -121,6 +167,11 @@ CLAIMS: dict[tuple[str, str, str], int] = {
     # many sources that is.
     (COVER, "in one full run", "records"): sum(FULL_RUN_SIZES.values()),
     (COVER, "one pipeline", "sources"): len(KNOWN_SOURCES),
+    # The plate's caption. One number is about the picture — how much of the file
+    # is on it — and is checked against the sample the exporter draws; the other
+    # is about the catalogue that file came out of.
+    (PLATE, "shown", "rows"): _sample_rows(),
+    (PLATE, "a full run collects", "books"): FULL_RUN_SIZES["books"],
 }
 
 #: Every number a drawing states about the suite, with the selection it claims to
@@ -402,7 +453,7 @@ def test_a_figure_states_the_number_the_code_holds(source: str, box: str, unit: 
     expected = CLAIMS[(source, box, unit)]
     assert drawn == expected, (
         f'{_path(source)} states {drawn} {unit} for "{box}", but the code holds '
-        f"{expected}.\n" + FIX.get(Path(source).suffix, FIX_DEFAULT).format(source=source)
+        f"{expected}.\n" + _fix(source)
     )
 
 
@@ -419,7 +470,7 @@ def test_a_figure_states_the_number_of_cases_pytest_collects(source: str, box: s
     assert drawn == collected, (
         f'{_path(source)} states {drawn} for "{box}", but pytest collects {collected}: '
         f"`pytest {shlex.join(selection)}`.\nA test was added, removed or re-marked. "
-        + FIX.get(Path(source).suffix, FIX_DEFAULT).format(source=source)
+        + _fix(source)
     )
 
 
@@ -483,6 +534,21 @@ def _python_floor() -> str:
     return floor
 
 
+def _published_csv() -> str:
+    """The name of the CSV a night publishes, as the page's own list of files gives it.
+
+    The plate is a picture of that file, and says so on its caption. If the
+    export were ever renamed, a plate still captioned with the old name would be
+    pointing readers at a file that is no longer published.
+    """
+    names = [name for name, _description in DATA_FILES if name.endswith(".csv")]
+    assert len(names) == 1, (
+        f"showcase.build publishes {len(names)} CSV file(s) ({names}), not one, so "
+        f"this test cannot tell which of them the plate shows."
+    )
+    return names[0]
+
+
 #: The numbers on these files that are not counts of anything: a schedule, a file
 #: name, a version. Each is a string the code holds, so the picture cannot go on
 #: naming something the project stopped doing.
@@ -491,6 +557,7 @@ LITERALS: dict[tuple[str, str], str] = {
     ("pipeline.svg", "the nightly schedule"): _cron(),
     ("pipeline.svg", "the browser marker"): _marker("e2e"),
     (COVER, "the Python version"): _python_floor(),
+    (PLATE, "the file it shows"): _published_csv(),
 }
 
 
@@ -648,7 +715,7 @@ def test_a_number_changed_on_the_cover_is_one_this_module_would_catch() -> None:
     assert parser.found[(label, unit)] != CLAIMS[(COVER, label, unit)]
 
 
-# -- the images the profile shows ------------------------------------------------
+# -- the images the profile and the README show ----------------------------------
 
 
 def _png_size(path: Path) -> tuple[int, int]:
@@ -671,22 +738,48 @@ def _png_size(path: Path) -> tuple[int, int]:
         ("guru-cover-image.png", (1536, 1024)),
         ("allure-report-screenshot.png", (1536, 1024)),
         ("guru-profile-banner-1000x250.png", (1000, 250)),
+        ("showcase/images/data-sample.png", (1536, 600)),
+        ("showcase/images/ci-run.png", (1400, 748)),
     ],
 )
-def test_a_committed_image_is_the_size_the_profile_expects(name: str, size: tuple[int, int]) -> None:
-    """The profile crops anything else, and nobody chose that crop.
+def test_a_committed_image_is_the_size_it_is_shown_at(name: str, size: tuple[int, int]) -> None:
+    """A picture that changed shape changed what it shows, and nobody chose that.
 
-    The banner also carries its size in its own name, so a file that no longer
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
     matches it is a file whose name lies.
     """
     path = ROOT / name
     assert path.is_file(), (
-        f"{name} is not in the repository. It is a tracked file the profile shows; "
-        f"export it with `PYTHONPATH=. python scripts/make-assets.py` and commit it."
+        f"{name} is not in the repository. It is a tracked file the profile or the "
+        f"README shows; export it with `PYTHONPATH=. python scripts/make-assets.py` "
+        f"and commit it."
     )
     assert _png_size(path) == size, (
         f"{name} is {'x'.join(map(str, _png_size(path)))}, not the "
-        f"{'x'.join(map(str, size))} the profile expects."
+        f"{'x'.join(map(str, size))} it is shown at."
+    )
+
+
+def test_the_plate_still_carries_the_comment_the_exporter_fills_in() -> None:
+    """The table is not in the plate: the exporter replaces one comment with it.
+
+    That comment is a fact kept in two files — the template and the exporter —
+    and two copies of one truth drift. The export itself refuses a plate it
+    cannot fill, so this only moves the complaint to the cheapest moment: a test
+    run, rather than the next time somebody tries to refresh the picture.
+    """
+    exporter = (ROOT / "scripts" / "make-assets.py").read_text(encoding="utf-8")
+    marks = re.findall(r'^TABLE_MARK = "(.+)"$', exporter, flags=re.M)
+    assert len(marks) == 1, (
+        f"scripts/make-assets.py states {len(marks)} table marker(s), not one: {marks}. "
+        f"This test reads the one the exporter looks for in the plate."
+    )
+    assert marks[0] in (ASSETS / PLATE).read_text(encoding="utf-8"), (
+        f"{_path(PLATE)} no longer carries the comment scripts/make-assets.py replaces "
+        f"with the table:\n  {marks[0]}\nWithout it there is nowhere for the data to go."
     )
 
 

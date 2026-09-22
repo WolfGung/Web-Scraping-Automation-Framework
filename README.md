@@ -13,12 +13,12 @@ What is shown here is the full cycle of such a job: the rules the collection has
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 222 | none |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 229 | none |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 27 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 268 | none |
+| the gate, `pytest -m "not live"` | the four rows above it | 275 | none |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
@@ -27,6 +27,14 @@ The gate is what every push and every pull request runs. The `live` row is opt-i
 [![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 
 That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
+
+[![The workflow's run page on GitHub, seen logged out: a green check beside the run's title, "Success" in the summary panel beside who pushed it and how long it took, and every job of the workflow listed down the side and in the graph.](showcase/images/ci-run.png)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/runs/35781328461)
+
+That is the run behind the badge at the top of this page, as a visitor sees it — `PYTHONPATH=. python scripts/make-assets.py --ci-run` photographs it again, and refuses a run that is not green rather than committing a picture of one.
+
+[![A fragment of the published books.csv drawn as a plain table: the file's own column names across the top, then rows of books with their prices, ratings and stock in monospace, the long identifier and address columns clipped to fit the plate.](showcase/images/data-sample.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv)
+
+That is the head of [the `books.csv` last night published](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv), drawn by `PYTHONPATH=. python scripts/make-assets.py --only data` from the file itself, so the columns, their order and every value on it are the data's rather than a copy somebody typed.
 
 [![The project cover. On the left, the title "Web Scraping Automation Framework" over the claim "Three sources, one pipeline - and a report that says what changed since last night", the pipeline written out as validate, normalise, snapshot, diff, report, and a row of the tools used. On the right, three cards: books.toscrape.com, static HTML over a polite client, 1000 books; quotes.toscrape.com, rendered first in a real browser, 100 quotes; the demo store, ships here and moves every day, 40 products. A badge underneath reads 1140 records in one full run, 3 sources, one pipeline.](guru-cover-image.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/)
 

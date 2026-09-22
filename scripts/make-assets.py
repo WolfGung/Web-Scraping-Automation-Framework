@@ -4,18 +4,26 @@ Editing the wording on a cover should be editing a line of text, not opening an
 image editor, so the cover is HTML and this script is the exporter. The report
 screenshot comes from the real thing — a generated Allure report served over
 HTTP — so refreshing it is re-running this script instead of letting it age
-into a lie.
+into a lie. The same applies to the two pictures the README shows as evidence:
+a fragment of the data this project publishes, built from the file itself, and
+a photograph of a real CI run on GitHub.
 
 The profile banner is not rendered here. It is a profile-level asset, identical
 across the owner's projects, and it is committed as
 `guru-profile-banner-1000x250.png`: a second banner that almost matched the
 first would look wrong beside it in the same profile.
 
-Two things this script refuses to do, because both fail silently otherwise:
+Three things this script refuses to do, because all three fail silently
+otherwise:
 
 * photograph an Allure report that is not a complete, passing run. It reads the
   overview's own JSON and compares it with what pytest collects, and says what
   it found when they disagree;
+* photograph a CI run that is not green. It reads the run page's own status —
+  the word GitHub prints under "Status", and the labels its status icons carry
+  — and refuses anything but a run that completed successfully. A screenshot of
+  a green check is a claim about the suite, and this script will not take that
+  picture of a red run, or of a run whose status it could not read at all;
 * leave behind a blank image. Every export is measured back out of the file and
   out of the pixels the browser actually produced, so a template that rendered
   to an empty field is an error rather than a committed picture of nothing.
@@ -30,19 +38,30 @@ checks reach somebody else's site and are not part of a local run, so the
 selection above is the ordinary one here; omitting `--ran` asks for the whole
 suite and is then checked against the whole suite, live checks included.
 
+Each picture has a name, and `--only` exports just the ones named — which is
+what refreshing one of them is, and what keeps a run that only wanted the data
+plate from demanding a freshly generated report. The CI photograph is the one
+export that is not in the default set, because it is the one that reaches the
+network: `--ci-run` asks for it, either at a run page you name or at the latest
+green run of this workflow, looked up through GitHub's public API.
+
 The HTTP server is this script's own: Allure's report reads its data with
 `fetch`, which a `file://` page is not allowed to do, and the pixel check below
 reads a canvas back, which needs the image to share an origin with the page
 reading it. It listens on the loopback interface, on a port the kernel picks,
 and it is rooted at the generated report — not at the repository, and not at
-the repository behind a rule about how a request is spelled. The images it also
+the repository behind a rule about how a request is spelled. When no report is
+being photographed it is rooted at an empty directory instead, since the only
+routes still wanted are the two this script serves itself. The images it also
 offers back are named under `/exports/`, never walked to.
 """
 from __future__ import annotations
 
 import argparse
 import contextlib
+import csv
 import functools
+import html
 import http.server
 import json
 import struct
@@ -50,30 +69,114 @@ import subprocess
 import sys
 import tempfile
 import threading
+import tomllib
 import urllib.parse
-from collections.abc import Iterator
+import urllib.request
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import NamedTuple
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Browser, Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Sized to what the profile expects; anything else is cropped by it.
-SHOTS = [
-    ("showcase/assets/cover.html", "guru-cover-image.png", 1536, 1024),
-]
 
-# The report finishes itself after load: Allure draws the overview charts in
-# script. So the page waits for something it only shows once it is ready, then
-# gets a moment to settle.
-PAGES = [
-    ("/", "allure-report-screenshot.png", "text=test cases", 1536, 1024),
-]
+class Plate(NamedTuple):
+    """An HTML file in this repository, photographed as the browser renders it."""
+
+    key: str
+    source: str
+    out: str
+    width: int
+    height: int
+
+
+class Served(NamedTuple):
+    """A page of the generated report, photographed over this script's own server."""
+
+    key: str
+    path: str
+    out: str
+    ready: str
+    width: int
+    height: int
+
+
+class Remote(NamedTuple):
+    """A page on somebody else's server, photographed as a logged-out visitor sees it.
+
+    `crop` is the height kept out of `height`: the run page continues below the
+    workflow's own graph into annotations and artifacts, which say nothing about
+    whether the run passed, so the picture stops at the gap between the two.
+    """
+
+    key: str
+    out: str
+    width: int
+    height: int
+    crop: int
+
+
+# Sized to what the profile expects; anything else is cropped by it.
+COVER = Plate("cover", "showcase/assets/cover.html", "guru-cover-image.png", 1536, 1024)
+
+#: A fragment of the data a night actually publishes, as a picture of the file:
+#: the plate is `showcase/assets/data-sample.html`, and the table in it is built
+#: here from `showcase/assets/books-sample.csv` — the head of the published
+#: `books.csv`, kept as that file spells it.
+DATA = Plate("data", "showcase/assets/data-sample.html", "showcase/images/data-sample.png", 1536, 600)
+
+#: The report finishes itself after load: Allure draws the overview charts in
+#: script. So the page waits for something it only shows once it is ready, then
+#: gets a moment to settle.
+REPORT = Served("report", "/", "allure-report-screenshot.png", "text=test cases", 1536, 1024)
+
+#: The run page, at the width GitHub lays its two columns out at, cropped to the
+#: run: the title and its status, the summary panel, and the jobs.
+CI_RUN = Remote("ci-run", "showcase/images/ci-run.png", 1400, 900, 748)
+
+#: Every picture, in the order they are exported, and the ones a run with no
+#: `--only` and no `--ci-run` produces. The CI photograph is left out of the
+#: default set because it is the one export that reaches the network.
+PICTURES: tuple[Plate | Served | Remote, ...] = (COVER, DATA, REPORT, CI_RUN)
+DEFAULT_PICTURES = tuple(picture.key for picture in PICTURES if picture is not CI_RUN)
 
 #: Where `allure generate` is asked to write, by default and in the publish
 #: script. `--report` points this script at another one, which is what a run
 #: that generated into a scratch directory needs.
 DEFAULT_REPORT_DIR = ROOT / "site" / "report"
+
+#: The head of the published `books.csv`, as the data plate shows it.
+SAMPLE_CSV = ROOT / "showcase" / "assets" / "books-sample.csv"
+
+#: Where the table goes in that plate. The comment is in the template, so the
+#: file says what fills it; if it is ever edited away, the export stops rather
+#: than photographing a plate with no data on it.
+TABLE_MARK = "<!-- the table the exporter builds from showcase/assets/books-sample.csv -->"
+
+#: The workflow whose runs this script photographs, and the branch it asks about.
+#: The repository itself is not spelled here: it is read from `pyproject.toml`,
+#: which already states it for anyone installing the project.
+WORKFLOW = ".github/workflows/ci.yml"
+DEFAULT_BRANCH = "main"
+
+#: What `--ci-run` means when it is given without a run page: ask the public API
+#: for one. No token is used — the repository, its runs and this page are public,
+#: and a screenshot of a page only a credential can see would prove nothing to
+#: the person reading the README.
+LATEST = "latest"
+RUNS_API = "https://api.github.com/repos/{repository}/actions/runs"
+
+#: What the run page says about a run that finished green, in the summary panel
+#: under the word "Status". GitHub prints the conclusion there in words.
+GREEN = "success"
+
+#: How a status icon on that page labels a conclusion that is not green. The
+#: labels read "failure: <job>", "cancelled: <job>" and so on, so the prefix is
+#: what identifies them.
+NOT_GREEN_LABELS = (
+    "failure", "failed", "cancelled", "canceled", "timed out", "action required", "startup failure",
+)
 
 #: A flat field is one colour everywhere. Real output is not: the cover is a
 #: gradient under type, and the report is a white page under a dark sidebar
@@ -94,10 +197,10 @@ PROBE_PAGE = b"<!doctype html><meta charset=utf-8><title>probe</title>"
 
 #: The images this script writes, offered back under a prefix of their own.
 #: They are named, not looked up: the request supplies a name to compare
-#: against this mapping and never a path to walk.
-EXPORTS = {name: ROOT / name for _s, name, _w, _h in SHOTS} | {
-    name: ROOT / name for _u, name, _r, _w, _h in PAGES
-}
+#: against this mapping and never a path to walk — so the key is the file's own
+#: name, and two pictures may not share one.
+EXPORTS = {Path(picture.out).name: ROOT / picture.out for picture in PICTURES}
+assert len(EXPORTS) == len(PICTURES), "two pictures share a file name, and the export routes go by name"
 EXPORT_PREFIX = "/exports/"
 
 
@@ -172,9 +275,9 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def _serving(report_dir: Path) -> Iterator[str]:
+def _serving(root: Path) -> Iterator[str]:
     """The generated report over HTTP on loopback, for as long as the export runs."""
-    handler = functools.partial(_Handler, directory=str(report_dir))
+    handler = functools.partial(_Handler, directory=str(root))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -374,7 +477,7 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
             f"{name} is {actual[0]}x{actual[1]}, not the {width}x{height} it has to be. "
             f"The profile crops anything else, so this file cannot be shipped."
         )
-    distinct, ink = _ink(page, f"{base_url}{EXPORT_PREFIX}{name}")
+    distinct, ink = _ink(page, f"{base_url}{EXPORT_PREFIX}{path.name}")
     if distinct < MIN_DISTINCT_COLOURS or ink < MIN_INK_SHARE:
         raise RuntimeError(
             f"{name} is {width}x{height} but essentially blank: a grid of samples found "
@@ -384,6 +487,244 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
             f"load, or a page photographed before it painted."
         )
     print(f"  {name}: {width}x{height}, {distinct} colours sampled, {ink:.1%} ink")
+
+
+# -- the plates ------------------------------------------------------------------
+
+
+def _export_plate(
+    browser: Browser,
+    probe: Page,
+    base_url: str,
+    plate: Plate,
+    markup: str | None = None,
+    check: Callable[[Page, Plate], None] | None = None,
+) -> None:
+    """Photograph one of this repository's own HTML files.
+
+    `markup` is the document to render when it is not simply the file on disk —
+    the data plate is a template with a table built into it here — and `check`
+    is whatever that plate has to be held to before it is photographed.
+    """
+    page = browser.new_page(viewport={"width": plate.width, "height": plate.height})
+    if markup is None:
+        page.goto((ROOT / plate.source).as_uri())
+    else:
+        page.set_content(markup, wait_until="load")
+    page.wait_for_timeout(300)
+    if check is not None:
+        check(page, plate)
+    (ROOT / plate.out).parent.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=ROOT / plate.out)
+    page.close()
+    _require_a_picture(probe, base_url, plate.out, plate.width, plate.height)
+
+
+def _sample_rows() -> tuple[list[str], list[dict[str, str]]]:
+    """The head of the published `books.csv`, as the file spells it."""
+    with SAMPLE_CSV.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        columns = list(reader.fieldnames or [])
+        rows = list(reader)
+    if not columns or not rows:
+        raise RuntimeError(
+            f"{SAMPLE_CSV.relative_to(ROOT)} holds {len(columns)} column(s) and "
+            f"{len(rows)} row(s), so there is no table to draw. It is the head of the "
+            f"published books.csv; refresh it from "
+            f"https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv"
+        )
+    return columns, rows
+
+
+def _data_plate_markup() -> str:
+    """The data plate with the table built into it, straight out of the CSV.
+
+    The columns are the file's own columns, in the file's own order, and each
+    cell is the file's own text: the picture is a rendering of the data rather
+    than a second copy of it that could disagree.
+    """
+    template = (ROOT / DATA.source).read_text(encoding="utf-8")
+    if TABLE_MARK not in template:
+        raise RuntimeError(
+            f"{DATA.source} no longer carries the comment the table replaces:\n"
+            f"  {TABLE_MARK}\nWithout it this export would photograph an empty plate."
+        )
+    columns, rows = _sample_rows()
+    head = "".join(f"<th>{html.escape(column)}</th>" for column in columns)
+    body = "".join(
+        "<tr>" + "".join(f"<td>{html.escape(row[column] or '')}</td>" for column in columns) + "</tr>"
+        for row in rows
+    )
+    table = f'<table class="grid"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+    return template.replace(TABLE_MARK, table)
+
+
+def _require_the_caption_counts_the_rows(page: Page, plate: Plate) -> None:
+    """Refuse a plate whose caption counts something other than what it shows.
+
+    The caption states how many rows the picture holds, and a reader takes that
+    on trust — so it is read back off the rendered page, beside the rows that
+    were actually drawn, rather than believed.
+    """
+    said = page.locator(".rows-shown").inner_text().strip()
+    drawn = page.locator(".grid tbody tr").count()
+    if said != str(drawn):
+        raise RuntimeError(
+            f"{plate.source} says it shows {said} row(s), but {drawn} were drawn into "
+            f"it from {SAMPLE_CSV.relative_to(ROOT)}. Edit the caption, or the sample, "
+            f"so that the picture counts itself correctly — and note that the number in "
+            f"that caption is pinned by tests/unit/test_showcase_figures.py."
+        )
+
+
+# -- the run on GitHub -----------------------------------------------------------
+
+
+def _repository() -> str:
+    """`owner/name`, read from the metadata this project already states it in."""
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    url = config["project"]["urls"]["Repository"]
+    prefix = "https://github.com/"
+    if not url.startswith(prefix):
+        raise RuntimeError(
+            f"pyproject.toml gives the repository as {url!r}, which is not a GitHub "
+            f"URL this script can turn into an API path."
+        )
+    return url[len(prefix):].strip("/")
+
+
+def _head_of(branch: str) -> str | None:
+    """What `origin/<branch>` points at here, or nothing if this clone cannot say."""
+    proc = subprocess.run(
+        ["git", "rev-parse", f"origin/{branch}"],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    return proc.stdout.strip() or None
+
+
+def _latest_green_run(branch: str = DEFAULT_BRANCH) -> str:
+    """The run page to photograph: the latest green run of this workflow.
+
+    Asked of the public API, without a token, because the repository is public
+    and so is the page being photographed. The run that built what
+    `origin/<branch>` points at is preferred where there is one, so the picture
+    shows the checks that passed on the code a visitor is reading; otherwise it
+    is simply the most recent green run, which is the honest answer when the
+    working clone is ahead of what CI has seen.
+    """
+    repository = _repository()
+    query = urllib.parse.urlencode({"branch": branch, "status": "success", "per_page": 30})
+    request = urllib.request.Request(
+        f"{RUNS_API.format(repository=repository)}?{query}",
+        headers={"Accept": "application/vnd.github+json", "User-Agent": f"{repository} make-assets"},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:  # a literal https URL, built above
+        payload = json.load(response)
+    runs = [
+        run for run in payload.get("workflow_runs", [])
+        if run.get("path") == WORKFLOW and run.get("status") == "completed" and run.get("conclusion") == "success"
+    ]
+    if not runs:
+        raise RuntimeError(
+            f"the public API reports no completed, successful run of {WORKFLOW} on "
+            f"{branch} for {repository}, so there is no green run to photograph."
+        )
+    head = _head_of(branch)
+    chosen = next((run for run in runs if run.get("head_sha") == head), runs[0])
+    built = chosen.get("head_sha", "")[:7]
+    whose = f"origin/{branch}" if head == chosen.get("head_sha") else f"an older commit than origin/{branch}"
+    print(f"  ci-run: the latest green run of {WORKFLOW} on {branch} built {built}, which is {whose}")
+    return chosen["html_url"]
+
+
+def _require_the_run_is_green(page: Page, url: str) -> None:
+    """Refuse to photograph a run that is not green, or one that will not say.
+
+    A screenshot of a CI run is a claim that the suite passed, so it is read off
+    the page rather than assumed from the URL it was asked for: the word GitHub
+    prints under "Status" in the summary panel, and the labels its status icons
+    carry. A run whose status cannot be read at all is refused too — that is
+    what a redesigned page looks like, and a picture taken through it would be a
+    picture nobody checked.
+    """
+    seen = page.evaluate(
+        """([notGreen]) => {
+          const label = [...document.querySelectorAll('span, div, dt')].find(
+            (element) => element.children.length === 0 && element.textContent.trim() === 'Status');
+          const beside = label && label.nextElementSibling;
+          const marks = [...document.querySelectorAll('[aria-label]')]
+            .map((element) => (element.getAttribute('aria-label') || '').trim())
+            .filter((text) => text);
+          return {
+            said: beside ? beside.textContent.trim() : null,
+            green: marks.filter((text) => text.toLowerCase().startsWith('completed successfully')).length,
+            wrong: [...new Set(marks.filter(
+              (text) => notGreen.some((bad) => text.toLowerCase().startsWith(bad))))],
+          };
+        }""",
+        [list(NOT_GREEN_LABELS)],
+    )
+    said, green, wrong = seen["said"], int(seen["green"]), list(seen["wrong"])
+    if said is None:
+        raise RuntimeError(
+            f"{url} does not state a status where this script reads one — the summary "
+            f"panel prints the conclusion beside the word \"Status\". Either the run "
+            f"page has been redesigned, or that is not a run page. Nothing was "
+            f"photographed: a screenshot of a run whose result was never read is a "
+            f"picture of nothing in particular."
+        )
+    if said.lower() != GREEN or wrong or not green:
+        raise RuntimeError(
+            f"{url} is not a green run: its summary panel says {said!r}, {green} status "
+            f"icon(s) report success, and what its icons report that is not green is "
+            f"{wrong or 'nothing — so nothing on that page called the run passing'}. "
+            f"This exporter does not photograph a run it cannot call passing — point "
+            f"--ci-run at a green run, or let it look one up itself."
+        )
+
+
+def _export_ci_run(browser: Browser, probe: Page, base_url: str, url: str | None) -> None:
+    """Photograph the public run page: the workflow, its status, and its jobs.
+
+    Logged out, in a browser with nothing signed in, because that is what a
+    visitor following the badge sees. The page is given the width GitHub lays
+    its two columns out at, and the shot is cropped above the annotations and
+    artifacts below them — they are not evidence about the run, and a fixed
+    height is what keeps the committed file the same size every time.
+    """
+    run_url = _latest_green_run() if url in (None, LATEST) else url
+    page = browser.new_page(viewport={"width": CI_RUN.width, "height": CI_RUN.height})
+    page.goto(run_url, wait_until="domcontentloaded", timeout=60_000)
+    page.wait_for_selector("text=Total duration", timeout=60_000)
+    page.wait_for_selector('[aria-label="Workflow run graph"]', timeout=60_000)
+    page.wait_for_timeout(2500)
+    _require_the_run_is_green(page, run_url)
+    (ROOT / CI_RUN.out).parent.mkdir(parents=True, exist_ok=True)
+    page.screenshot(
+        path=ROOT / CI_RUN.out,
+        clip={"x": 0, "y": 0, "width": CI_RUN.width, "height": CI_RUN.crop},
+    )
+    page.close()
+    _require_a_picture(probe, base_url, CI_RUN.out, CI_RUN.width, CI_RUN.crop)
+    print(f"  ci-run: photographed {run_url}")
+
+
+# -- the report ------------------------------------------------------------------
+
+
+def _export_report(browser: Browser, probe: Page, base_url: str, ran: str, report_dir: Path) -> None:
+    """Photograph the generated Allure report, once it is known to be green."""
+    page = browser.new_page(viewport={"width": REPORT.width, "height": REPORT.height})
+    page.goto(f"{base_url}{REPORT.path}", wait_until="load", timeout=60_000)
+    _require_report_is_complete_and_green(page, base_url, ran, report_dir)
+    page.wait_for_selector(REPORT.ready, timeout=60_000)
+    page.wait_for_timeout(3000)
+    page.screenshot(path=ROOT / REPORT.out)
+    page.close()
+    _require_a_picture(probe, base_url, REPORT.out, REPORT.width, REPORT.height)
+
+
+# -- the command line ------------------------------------------------------------
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -408,20 +749,63 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             f"(default: {DEFAULT_REPORT_DIR.relative_to(ROOT)})."
         ),
     )
+    parser.add_argument(
+        "--only",
+        metavar="PICTURE",
+        nargs="+",
+        choices=[picture.key for picture in PICTURES],
+        help=(
+            "export only these pictures, of "
+            f"{', '.join(picture.key for picture in PICTURES)} "
+            f"(default: {', '.join(DEFAULT_PICTURES)}, and ci-run when --ci-run is given)."
+        ),
+    )
+    parser.add_argument(
+        "--ci-run",
+        metavar="URL",
+        nargs="?",
+        const=LATEST,
+        default=None,
+        help=(
+            "also photograph a GitHub Actions run page into showcase/images/ci-run.png. "
+            "With no URL, the latest completed, successful run of this workflow on "
+            f"{DEFAULT_BRANCH} is looked up through the public API — preferring the run "
+            f"that built what origin/{DEFAULT_BRANCH} points at. A run that is not green "
+            "is refused rather than photographed."
+        ),
+    )
     return parser.parse_args(argv)
+
+
+def _wanted(args: argparse.Namespace) -> tuple[str, ...]:
+    """Which pictures this run exports, in the order they are taken."""
+    asked = tuple(args.only) if args.only else DEFAULT_PICTURES + (
+        (CI_RUN.key,) if args.ci_run is not None else ()
+    )
+    return tuple(picture.key for picture in PICTURES if picture.key in asked)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
+    wanted = _wanted(args)
     ran, report_dir = args.ran, args.report.resolve()
-    if not (report_dir / "index.html").exists():
+    if REPORT.key in wanted and not (report_dir / "index.html").exists():
         raise RuntimeError(
             f"{report_dir}/index.html does not exist, so there is no report to "
             f"photograph. Generate one first:\n"
-            f"  ~/.local/bin/allure generate allure-results --clean -o {report_dir}"
+            f"  ~/.local/bin/allure generate allure-results --clean -o {report_dir}\n"
+            f"Or leave the report out of this run: --only "
+            f"{' '.join(key for key in wanted if key != REPORT.key) or COVER.key}"
         )
-    with _serving(report_dir) as base_url, sync_playwright() as p:
-        browser = p.chromium.launch()
+    with contextlib.ExitStack() as stack:
+        # The server exists for `/probe` and `/exports/` as much as for the
+        # report, and those two are served by this handler rather than read off
+        # disk — so a run that photographs no report is rooted at an empty
+        # directory, which is the only root that can leak nothing.
+        root = report_dir if REPORT.key in wanted else Path(stack.enter_context(tempfile.TemporaryDirectory()))
+        base_url = stack.enter_context(_serving(root))
+        playwright = stack.enter_context(sync_playwright())
+        browser = playwright.chromium.launch()
         # Closed the way the server is closed: every refusal in this script
         # leaves by raising, and the one resource that was not unwound in a
         # `finally` was the browser.
@@ -429,23 +813,18 @@ def main(argv: list[str] | None = None) -> None:
             probe = browser.new_page()
             probe.goto(f"{base_url}/probe", wait_until="load")
 
-            for source, name, width, height in SHOTS:
-                page = browser.new_page(viewport={"width": width, "height": height})
-                page.goto((ROOT / source).as_uri())
-                page.wait_for_timeout(300)
-                page.screenshot(path=ROOT / name)
-                page.close()
-                _require_a_picture(probe, base_url, name, width, height)
-
-            for path, name, ready, width, height in PAGES:
-                page = browser.new_page(viewport={"width": width, "height": height})
-                page.goto(f"{base_url}{path}", wait_until="load", timeout=60_000)
-                _require_report_is_complete_and_green(page, base_url, ran, report_dir)
-                page.wait_for_selector(ready, timeout=60_000)
-                page.wait_for_timeout(3000)
-                page.screenshot(path=ROOT / name)
-                page.close()
-                _require_a_picture(probe, base_url, name, width, height)
+            if COVER.key in wanted:
+                _export_plate(browser, probe, base_url, COVER)
+            if DATA.key in wanted:
+                _export_plate(
+                    browser, probe, base_url, DATA,
+                    markup=_data_plate_markup(),
+                    check=_require_the_caption_counts_the_rows,
+                )
+            if REPORT.key in wanted:
+                _export_report(browser, probe, base_url, ran, report_dir)
+            if CI_RUN.key in wanted:
+                _export_ci_run(browser, probe, base_url, args.ci_run)
 
             probe.close()
         finally:
