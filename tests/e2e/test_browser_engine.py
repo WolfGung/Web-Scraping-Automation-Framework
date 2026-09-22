@@ -1,6 +1,8 @@
 """The browser engine's three moves, proven on the demo store where the end is known."""
 from __future__ import annotations
 
+import time
+
 import pytest
 from selectolax.parser import HTMLParser
 
@@ -23,6 +25,15 @@ def test_login_opens_the_members_page(demo_store_url: str) -> None:
         session.login(f"{demo_store_url}/login", "demo", "demo")
         html = session.render(f"{demo_store_url}/members", wait_for=".product")
     assert 'class="member-price"' in html
+
+
+def test_login_with_the_wrong_password_fails_fast_instead_of_looking_like_success(demo_store_url: str) -> None:
+    with BrowserSession(Settings()) as session:
+        started = time.monotonic()
+        with pytest.raises(RuntimeError, match="login failed"):
+            session.login(f"{demo_store_url}/login", "demo", "wrong")
+        elapsed = time.monotonic() - started
+    assert elapsed < 10.0
 
 
 def test_recording_is_off_by_default_and_on_when_asked(demo_store_url: str, tmp_path) -> None:

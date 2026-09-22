@@ -44,21 +44,29 @@ class BrowserSession:
         self._tracing_started = False
 
     def __enter__(self) -> BrowserSession:
-        self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch(headless=self._settings.headless)
+        try:
+            self._playwright = sync_playwright().start()
+            self._browser = self._playwright.chromium.launch(headless=self._settings.headless)
 
-        context_kwargs: dict = {"user_agent": self._settings.user_agent}
-        if self._settings.record_video:
-            video_dir = Path(self._settings.video_dir)
-            video_dir.mkdir(parents=True, exist_ok=True)
-            context_kwargs["record_video_dir"] = str(video_dir)
-        self._context = self._browser.new_context(**context_kwargs)
+            context_kwargs: dict = {"user_agent": self._settings.user_agent}
+            if self._settings.record_video:
+                video_dir = Path(self._settings.video_dir)
+                video_dir.mkdir(parents=True, exist_ok=True)
+                context_kwargs["record_video_dir"] = str(video_dir)
+            self._context = self._browser.new_context(**context_kwargs)
 
-        if self._settings.record_video:
-            trace_dir = Path(self._settings.trace_dir)
-            trace_dir.mkdir(parents=True, exist_ok=True)
-            self._context.tracing.start(screenshots=True, snapshots=True, sources=True)
-            self._tracing_started = True
+            if self._settings.record_video:
+                trace_dir = Path(self._settings.trace_dir)
+                trace_dir.mkdir(parents=True, exist_ok=True)
+                self._context.tracing.start(screenshots=True, snapshots=True, sources=True)
+                self._tracing_started = True
+        except BaseException:
+            # launch() or new_context() failed partway through: tear down whatever did
+            # start before re-raising, or the Playwright driver (and maybe a browser)
+            # leaks — nothing will ever call `__exit__` for a `with` block that never
+            # returned from `__enter__`.
+            self._teardown()
+            raise
 
         return self
 
@@ -68,6 +76,15 @@ class BrowserSession:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
+        self._teardown()
+
+    def _teardown(self) -> None:
+        """Stop tracing, then close the context, the browser, and the Playwright driver.
+
+        Shared by `__exit__` and by `__enter__`'s failure path, in the same order
+        either way: whatever was started gets closed, in reverse order, and a failure
+        at one step never skips the next.
+        """
         try:
             if self._tracing_started and self._context is not None:
                 trace_path = Path(self._settings.trace_dir) / f"{self._trace_name}.zip"
@@ -111,13 +128,21 @@ class BrowserSession:
         Never a fixed number of scrolls: some pages announce completion explicitly
         (`done_selector`), others might not, so a stalled count is the fallback signal
         that there is nothing left to load.
+
+        Honours the demo store's `data-error` convention: a load that failed sets
+        `done_selector` alongside a `data-error="<message>"` attribute, so once
+        `done_selector` has matched, its first element's `data-error` is read and a
+        non-empty value is raised rather than returned as an ordinary, successful end
+        of scrolling. Harmless for pages that use `done_selector` without ever setting
+        `data-error` — `get_attribute` returns `None` there, and nothing is raised.
         """
         page = self._get_page()
         page.goto(url)
 
         stalled_rounds = 0
         last_count = page.locator(item_selector).count()
-        while page.locator(done_selector).count() == 0:
+        done_locator = page.locator(done_selector)
+        while done_locator.count() == 0:
             page.mouse.wheel(0, _SCROLL_STEP_PX)
             page.wait_for_timeout(_SCROLL_PAUSE_MS)
             count = page.locator(item_selector).count()
@@ -128,13 +153,29 @@ class BrowserSession:
             last_count = count
             if stalled_rounds >= _STALL_ROUNDS:
                 break
+
+        if done_locator.count() > 0:
+            error = done_locator.first.get_attribute("data-error")
+            if error:
+                raise RuntimeError(f"page reported a load error at {url}: {error}")
         return page.content()
 
     def login(self, url: str, username: str, password: str) -> None:
-        """Fill and submit the login form at `url`, waiting for the resulting navigation."""
+        """Fill and submit the login form at `url`, waiting for the resulting navigation.
+
+        A rejected login re-renders the same form rather than raising on its own —
+        `expect_navigation()` is satisfied by that response just as it would be by a
+        real redirect, so this checks the result: if the page still shows
+        `input[name=password]` afterwards, the login did not succeed, and a
+        `RuntimeError` is raised naming `url`. Without this check a caller only finds
+        out much later, as an unrelated `wait_for_selector` timeout on whatever page
+        it renders next.
+        """
         page = self._get_page()
         page.goto(url)
         page.fill("input[name=username]", username)
         page.fill("input[name=password]", password)
         with page.expect_navigation():
             page.click("button[type=submit]")
+        if page.locator("input[name=password]").count() > 0:
+            raise RuntimeError(f"login failed at {url}: the page still shows the login form")
