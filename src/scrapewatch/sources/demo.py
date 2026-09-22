@@ -14,14 +14,16 @@ from datetime import UTC, datetime
 
 from scrapewatch.http import PoliteClient
 from scrapewatch.models import RawRecord
-from scrapewatch.sources.base import SourceStats
+from scrapewatch.sources.base import SourceStats, fetch_refused
 
 
 class DemoSource:
     """Walks the demo store's `/api/products` pages until one comes back with no items."""
 
     name = "demo"
-    kind = "product"
+    #: The door: the store ships in this repository and is served on loopback, so
+    #: nothing here leaves the machine.
+    kind = "local"
 
     def __init__(self, client: PoliteClient, base_url: str) -> None:
         self._client = client
@@ -35,40 +37,45 @@ class DemoSource:
         here follows: a refusal becomes a `RuntimeError` naming the reason, which
         `run_sources` turns into a skipped source rather than a crash.
         """
-        root_url = f"{self._base_url}/"
-        if not self._client.allowed(root_url):
-            reason = self._client.robots_refusal_reason or f"robots.txt disallows {root_url}"
-            raise RuntimeError(f"demo: fetch refused by robots.txt: {reason}")
+        with self._source_stats.measuring(self._client.stats):
+            root_url = f"{self._base_url}/"
+            if not self._client.allowed(root_url):
+                raise fetch_refused(self.name, self._client, root_url)
 
-        page = 1
-        pages_fetched = 0
-        while True:
-            response = self._client.get(f"{self._base_url}/api/products?page={page}")
-            payload = response.json()
-            items = payload["items"]
-            if not items:
-                break
+            page = 1
+            pages_fetched = 0
+            while True:
+                response = self._client.get(f"{self._base_url}/api/products?page={page}")
+                payload = response.json()
+                items = payload["items"]
+                if not items:
+                    break
 
-            pages_fetched += 1
-            listing_url = f"{self._base_url}/?page={page}"
-            for item in items:
-                self._source_stats.records += 1
-                yield RawRecord(
-                    source=self.name,
-                    external_id=str(item["id"]),
-                    fetched_at=datetime.now(UTC),
-                    fields={
-                        "name": item["name"],
-                        "price": item["price"],
-                        "in_stock": item["in_stock"],
-                        "stock": item["stock"],
-                    },
-                    url=listing_url,
-                )
-            self._source_stats.pages = pages_fetched
-            page += 1
+                pages_fetched += 1
+                listing_url = f"{self._base_url}/?page={page}"
+                for item in items:
+                    self._source_stats.records += 1
+                    yield RawRecord(
+                        source=self.name,
+                        external_id=str(item["id"]),
+                        fetched_at=datetime.now(UTC),
+                        fields={
+                            "name": item["name"],
+                            "price": item["price"],
+                            "in_stock": item["in_stock"],
+                            "stock": item["stock"],
+                        },
+                        url=listing_url,
+                    )
+                self._source_stats.pages = pages_fetched
+                page += 1
 
     @property
     def stats(self) -> dict:
-        """Pages and records this source counted, merged with the client's `FetchStats`."""
+        """Pages and records this source counted, with its own share of the client's totals.
+
+        Its own share, not the client's running totals: one client serves every
+        source in a run, so the difference since this source started is the only
+        honest answer to "what did collecting this cost".
+        """
         return self._source_stats.as_dict(self._client.stats)

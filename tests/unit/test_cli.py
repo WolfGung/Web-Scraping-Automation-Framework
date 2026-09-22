@@ -96,7 +96,10 @@ def test_a_source_the_caller_skipped_reaches_the_run_statistics_with_its_reason(
     assert list(sources) == ["books", "quotes", "demo"]  # the order the page's table follows
     assert sources["books"]["skipped"] is True
     assert sources["books"]["reason"] == "HTTP 503"
-    assert sources["books"]["records"] == 0 and sources["books"]["kind"] == "books"
+    # `kind` is the door, so a source that never ran still says which one it would
+    # have gone through — the page's table has a column for it.
+    assert sources["books"]["records"] == 0 and sources["books"]["kind"] == "http"
+    assert sources["quotes"]["kind"] == "browser" and sources["demo"]["kind"] == "local"
     # A skip with no reason given still says something a reader can act on.
     assert sources["quotes"]["reason"] == "skipped by --skip-quotes"
     assert sources["demo"]["skipped"] is False

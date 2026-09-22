@@ -114,10 +114,13 @@ def test_a_5xx_robots_txt_refuses_with_a_reason_after_retries(monkeypatch) -> No
 
     client = _client(handler)
     assert client.allowed("https://example.test/anything") is False
-    assert client.robots_refusal_reason
+    assert "returned HTTP 503" in (client.robots_refusal_reason or "")
+    # The origin did answer; it just could not tell us the rules.
+    assert client.robots_origin_unreachable is False
 
 
-def test_an_unreachable_robots_txt_refuses_with_a_reason(monkeypatch) -> None:
+def test_a_host_that_never_answered_refuses_and_says_it_did_not_answer(monkeypatch) -> None:
+    """Same refusal, different fact: there is no robots.txt here, only a silent host."""
     monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -125,4 +128,20 @@ def test_an_unreachable_robots_txt_refuses_with_a_reason(monkeypatch) -> None:
 
     client = _client(handler)
     assert client.allowed("https://example.test/anything") is False
-    assert client.robots_refusal_reason
+    assert "did not answer" in (client.robots_refusal_reason or "")
+    assert client.robots_origin_unreachable is True
+
+
+def test_a_readable_robots_txt_clears_the_unreachable_flag(monkeypatch) -> None:
+    """One client asks several origins, and the flag describes the last answer only."""
+    monkeypatch.setattr("scrapewatch.http.time.sleep", lambda s: None)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "dead.test":
+            raise httpx.ConnectError("connection refused", request=request)
+        return httpx.Response(200, text="User-agent: *\nAllow: /\n")
+
+    client = _client(handler)
+    assert client.allowed("https://dead.test/x") is False and client.robots_origin_unreachable is True
+    assert client.allowed("https://alive.test/x") is True
+    assert client.robots_origin_unreachable is False and client.robots_refusal_reason is None

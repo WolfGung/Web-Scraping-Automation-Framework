@@ -7,7 +7,7 @@ User-Agent, and a robots.txt check that honours what it finds.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from urllib import robotparser
 from urllib.parse import urlsplit
 
@@ -20,24 +20,53 @@ RETRIABLE = {500, 502, 503, 504}
 
 @dataclass
 class FetchStats:
+    """What one client has counted since it was built: a running total, not one run's.
+
+    A single client serves every HTTP source in a run — the per-host clock and the
+    robots cache only work if it does — so these numbers keep climbing from one
+    source to the next. A source that wants to report *its own* traffic takes a
+    `copy()` before it starts and reports the difference; that is what
+    `scrapewatch.sources.base.SourceStats` does, and why the page's "requests made"
+    is the traffic this project actually caused rather than each source repeating
+    the ones before it.
+    """
+
     requests: int = 0
     retries: int = 0
     bytes: int = 0
     seconds: float = 0.0
     hosts: dict[str, int] = field(default_factory=dict)
 
+    def copy(self) -> FetchStats:
+        """These counters as they stand now, unaffected by whatever is counted next.
+
+        `hosts` is rebuilt rather than shared: a shallow copy would hand back the
+        dict the client goes on mutating, and a "before" that moves with the "after"
+        is not a baseline at all.
+        """
+        return replace(self, hosts=dict(self.hosts))
+
 
 @dataclass
 class _RobotsState:
     """What we know about one origin's robots.txt.
 
-    ``unreachable_reason`` is set only when the file's rules could not be determined at
+    ``unreadable_reason`` is set only when the file's rules could not be determined at
     all (a 5xx that survived retries, or a transport failure) — never for an ordinary
     404, which just means there is no file and nothing is restricted.
+
+    ``origin_answered`` separates the two cases that both end in a refusal, because
+    they are not the same news: a 5xx is a server that answered and could not give us
+    the rules, a transport failure is a host that said nothing at all. The policy is
+    identical — a scraper that cannot read the rules does not assume there are none —
+    but a reader deciding what to do about it needs to know which happened, so the
+    sentence a source ends up printing says so (see
+    ``scrapewatch.sources.base.fetch_refused``).
     """
 
     parser: robotparser.RobotFileParser | None
-    unreachable_reason: str | None = None
+    unreadable_reason: str | None = None
+    origin_answered: bool = True
 
 
 class PoliteClient:
@@ -55,6 +84,10 @@ class PoliteClient:
         #: Why the most recent `allowed()` call returned False because robots.txt could
         #: not be read — None when it was allowed, or refused by an actual Disallow rule.
         self.robots_refusal_reason: str | None = None
+        #: Whether that refusal was a host that never answered at all, rather than one
+        #: that answered and could not be read. False unless the last `allowed()` call
+        #: hit a transport failure fetching robots.txt.
+        self.robots_origin_unreachable: bool = False
 
     # -- politeness -------------------------------------------------------
 
@@ -80,10 +113,12 @@ class PoliteClient:
         if origin not in self._robots:
             self._robots[origin] = self._load_robots(origin)
         state = self._robots[origin]
-        if state.unreachable_reason is not None:
-            self.robots_refusal_reason = state.unreachable_reason
+        if state.unreadable_reason is not None:
+            self.robots_refusal_reason = state.unreadable_reason
+            self.robots_origin_unreachable = not state.origin_answered
             return False
         self.robots_refusal_reason = None
+        self.robots_origin_unreachable = False
         if state.parser is None:
             return True
         return state.parser.can_fetch(self._settings.user_agent, url)
@@ -100,12 +135,13 @@ class PoliteClient:
                 return _RobotsState(parser=None)  # no robots.txt: nothing restricts us
             return _RobotsState(
                 parser=None,
-                unreachable_reason=f"robots.txt at {origin} returned HTTP {status} after retries",
+                unreadable_reason=f"robots.txt at {origin} returned HTTP {status} after retries",
             )
         except httpx.TransportError as exc:
             return _RobotsState(
                 parser=None,
-                unreachable_reason=f"robots.txt at {origin} was unreachable: {exc}",
+                unreadable_reason=f"{origin} did not answer when asked for robots.txt: {exc}",
+                origin_answered=False,
             )
         parser = robotparser.RobotFileParser()
         parser.parse(response.text.splitlines())

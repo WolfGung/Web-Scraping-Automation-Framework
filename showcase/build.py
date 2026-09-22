@@ -119,6 +119,11 @@ class SourceRun:
     """One source's night: what it cost to collect, and what moved since last time."""
 
     name: str
+    #: The door this source goes through, as the run recorded it: `http`, `browser`
+    #: or `local`. Shown on the page, because which door a source needs is the
+    #: decision this project is making a point of — and a skipped source still has
+    #: one, so the column is filled even on a night it was not collected.
+    kind: str = ""
     records: int = 0
     pages: int = 0
     requests: int = 0
@@ -225,6 +230,7 @@ def read_collection(stats_path: Path, changes_path: Path) -> Collection:
         collection.sources.append(
             SourceRun(
                 name=str(name),
+                kind=str(body.get("kind") or ""),
                 records=int(body.get("records", 0) or 0),
                 pages=int(body.get("pages", 0) or 0),
                 requests=int(body.get("requests", 0) or 0),
@@ -526,20 +532,28 @@ def _fill(page: str, values: dict[str, str]) -> str:
 
 
 def _source_rows(collection: Collection) -> str:
-    """One row per source: what it cost, and what moved. Every value escaped."""
+    """One row per source: which door, what it cost, and what moved. Every value escaped.
+
+    The door is printed as the run recorded it (`http`, `browser`, `local`) rather
+    than translated here into friendlier words: it is the same string the source
+    declares and `run-stats.json` carries, so there is nothing to keep in step. A run
+    that recorded no door for a source says so rather than guessing one.
+    """
     rows = []
     for source in collection.sources:
         name = _text(source.label)
+        door = _text(source.kind or "—")
         if source.skipped:
             reason = _text(source.reason or "no reason recorded")
             rows.append(
-                f'<tr><th scope="row">{name}</th>'
+                f'<tr><th scope="row">{name}</th><td>{door}</td>'
                 f'<td colspan="5">not collected — {reason}</td></tr>'
             )
             continue
         changes = _text(source.changes) if source.compared else "—"
         rows.append(
             f'<tr><th scope="row">{name}</th>'
+            f"<td>{door}</td>"
             f"<td>{_text(source.records)}</td>"
             f"<td>{_text(source.pages)}</td>"
             f"<td>{_text(source.requests)}</td>"

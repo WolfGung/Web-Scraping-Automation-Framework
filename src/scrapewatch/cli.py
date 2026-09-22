@@ -50,9 +50,10 @@ app = typer.Typer(help="ScrapeWatch: polite multi-source scraping with change de
 #: which is also the order stats print in.
 __all__ = ["KNOWN_SOURCES", "app"]
 
-#: What each source calls the things it collects. Needed for a source the caller
-#: skipped before the run: it is never built, so nothing else can be asked, and
-#: `run-stats.json` still has to carry an entry of the same shape for it.
+#: Which door each source goes through (`http`, `browser`, `local`). Needed for a
+#: source the caller skipped before the run: it is never built, so nothing else can
+#: be asked, and `run-stats.json` still has to carry an entry of the same shape for
+#: it — including the door it would have used, which the published page shows.
 SOURCE_KINDS: dict[str, str] = {
     BooksSource.name: BooksSource.kind,
     QuotesSource.name: QuotesSource.kind,
@@ -243,7 +244,7 @@ def scrape(
         storage.open()
         with PoliteClient(settings) as client, _browser_session_for(names, settings) as session:
             sources = _build_sources(names, client, session, max_pages=max_pages, demo_url=resolved_demo_url)
-            result = run_sources(sources, storage, settings, out)
+            result = run_sources(sources, storage, out)
 
         # Everything below is part of producing this run's outputs, so it shares the
         # run's error handling: an unwritable export directory or a retention that

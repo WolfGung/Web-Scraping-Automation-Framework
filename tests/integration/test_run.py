@@ -16,10 +16,9 @@ from typing import Any
 
 import pytest
 
-from scrapewatch.config import Settings
 from scrapewatch.models import RawRecord, Record
 from scrapewatch.pipeline.diff import ChangeSet
-from scrapewatch.pipeline.run import run_sources
+from scrapewatch.pipeline.run import _ZERO_STATS, run_sources
 from scrapewatch.storage import Run, Storage
 
 pytestmark = pytest.mark.integration
@@ -114,7 +113,7 @@ def test_run_sources_writes_stats_and_a_report_naming_the_sources_own_numbers(
 ) -> None:
     out_dir = tmp_path / "out"
 
-    result = run_sources([_FakeSource()], storage, Settings(), out_dir)
+    result = run_sources([_FakeSource()], storage, out_dir)
 
     stats_path = out_dir / "run-stats.json"
     report_json_path = out_dir / "change-report.json"
@@ -142,10 +141,30 @@ def test_run_sources_writes_stats_and_a_report_naming_the_sources_own_numbers(
     assert report["sources"]["demo"]["added"] == 2
 
 
+def test_a_collected_entry_has_the_same_keys_as_a_skipped_one(storage: Storage, tmp_path: Path) -> None:
+    """The page reads every source's entry the same way, so every entry has one shape.
+
+    A source that ran and one that never started are written by different code paths —
+    the first from what the source counted, the second from zeroes — and the published
+    page walks both. A key present in one and missing from the other is a page that
+    reads a number off one source and nothing off the next; a key of a different
+    *kind* (`hosts` used to arrive as a dict) is worse, because it survives into the
+    published JSON and the table quietly stops lining up.
+    """
+    out_dir = tmp_path / "out"
+
+    result = run_sources([_FakeSource(name="ok"), _FakeSource(name="down", fail=True)], storage, out_dir)
+
+    described = {"kind", "skipped", "reason", "parse_errors", "parse_error_reasons"}
+    assert set(result.stats["ok"]) == set(_ZERO_STATS) | described
+    assert set(result.stats["ok"]) == set(result.stats["down"])
+    assert all(isinstance(result.stats["ok"][name], (int, float)) for name in _ZERO_STATS)
+
+
 def test_a_source_whose_fetch_raises_is_skipped_and_the_run_continues(storage: Storage, tmp_path: Path) -> None:
     out_dir = tmp_path / "out"
 
-    result = run_sources([_FakeSource(fail=True)], storage, Settings(), out_dir)
+    result = run_sources([_FakeSource(fail=True)], storage, out_dir)
 
     stats = json.loads((out_dir / "run-stats.json").read_text())["sources"]["demo"]
     assert stats["skipped"] is True
@@ -164,7 +183,7 @@ def test_one_bad_record_is_isolated_the_source_is_not_skipped(storage: Storage, 
     out_dir = tmp_path / "out"
     source = _FakeSource(bad_records=1, good_records=2)
 
-    result = run_sources([source], storage, Settings(), out_dir)
+    result = run_sources([source], storage, out_dir)
 
     stats = result.stats["demo"]
     assert stats["skipped"] is False
@@ -181,7 +200,7 @@ def test_a_source_whose_every_record_fails_to_parse_is_skipped(storage: Storage,
     out_dir = tmp_path / "out"
     source = _FakeSource(bad_records=2, good_records=0)
 
-    result = run_sources([source], storage, Settings(), out_dir)
+    result = run_sources([source], storage, out_dir)
 
     stats = result.stats["demo"]
     assert stats["skipped"] is True
@@ -196,7 +215,7 @@ def test_a_storage_failure_on_one_source_does_not_stop_the_run(storage: Storage,
     failing_storage = _StorageThatFailsFor(storage, failing_source="broken")
     sources = [_FakeSource(name="broken"), _FakeSource(name="healthy")]
 
-    result = run_sources(sources, failing_storage, Settings(), out_dir)
+    result = run_sources(sources, failing_storage, out_dir)
 
     assert result.stats["broken"]["skipped"] is True
     assert "storage is unreachable" in result.stats["broken"]["reason"]
@@ -216,7 +235,7 @@ def test_every_source_failing_still_writes_both_output_files(storage: Storage, t
     out_dir = tmp_path / "out"
     sources = [_FakeSource(name="a", fail=True), _FakeSource(name="b", fail=True)]
 
-    result = run_sources(sources, storage, Settings(), out_dir)
+    result = run_sources(sources, storage, out_dir)
 
     assert (out_dir / "run-stats.json").exists()
     assert (out_dir / "change-report.json").exists()
@@ -235,7 +254,7 @@ def test_a_source_missing_a_protocol_member_is_refused_at_the_door(storage: Stor
             return iter([])
 
     with pytest.raises(TypeError, match="stats"):
-        run_sources([_MissingStats()], storage, Settings(), tmp_path / "out")
+        run_sources([_MissingStats()], storage, tmp_path / "out")
 
     # Nothing was written: the source was refused before the run even started.
     assert not (tmp_path / "out").exists()

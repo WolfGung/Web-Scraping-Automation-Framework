@@ -196,10 +196,11 @@
     </ul>
     <div class="table-scroll">
       <table>
-        <caption>Per source, as the run recorded it: pages walked, requests made, seconds spent, and changes against the previous snapshot.</caption>
+        <caption>Per source, as the run recorded it: the door it went through, pages walked, requests made, seconds spent, and changes against the previous snapshot.</caption>
         <thead>
           <tr>
             <th scope="col">Source</th>
+            <th scope="col">Door</th>
             <th scope="col">Records</th>
             <th scope="col">Pages</th>
             <th scope="col">Requests</th>
@@ -216,7 +217,10 @@
       That is {{SECONDS}} seconds of fetching in all. The requests are counted by
       the HTTP client itself, which is also what keeps at least half a second
       between two requests to the same host, so the figure is the traffic this
-      project actually caused.
+      project actually caused — each source's own share of it, not the run's
+      total repeated on every row. A browser page load is not one of them: the
+      source that goes through the browser door counts its rendered pages and
+      times them itself, because the HTTP client never sees them.
 <!--[if retries]-->
       {{RETRIES}} of them had to be retried, which is the client's backoff doing its
       job rather than a source failing.

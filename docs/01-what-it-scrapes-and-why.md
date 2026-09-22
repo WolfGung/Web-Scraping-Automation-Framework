@@ -27,6 +27,21 @@ asserts it finds nothing while the next runs the same parser over browser-render
 markup and finds every quote. Two doors, and a test that says which door each page
 needs.
 
+## The door is recorded, not just described
+
+Each source declares which door it goes through, and the run writes it down: `http`
+for the polite client, `browser` for the one that needs Chromium, `local` for the
+store that ships in this repository and is served on loopback. It is a field of
+every entry in `run-stats.json` (`kind`), and the published page gives it a column,
+so a reader sees the choice per source rather than having to take this document's
+word for it. A source that was skipped before the run still names the door it would
+have used.
+
+`kind` here is the door, not what the records are. What a record *is* — a book, a
+quote, a product — is `Record.kind`, decided by `normalize()`; two sources could
+collect the same kind of thing through different doors, and the interesting fact is
+the door.
+
 ## A store of our own, because the practice sites never move
 
 Both catalogues are fixed. Scrape either one twice and the diff is empty — not

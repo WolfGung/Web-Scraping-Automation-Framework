@@ -67,7 +67,7 @@ def _source_stats(**overrides) -> dict:
         "retries": 0,
         "bytes": 0,
         "seconds": 0.0,
-        "kind": "product",
+        "kind": "local",
         "skipped": False,
         "reason": None,
         "parse_errors": 0,
@@ -91,9 +91,9 @@ def _write_run(
         "sources": stats
         if stats is not None
         else {
-            "books": _source_stats(records=1000, pages=50, requests=51, seconds=12.5),
-            "quotes": _source_stats(records=100, pages=10, requests=0, seconds=8.0),
-            "demo": _source_stats(records=40, pages=4, requests=5, seconds=0.4),
+            "books": _source_stats(kind="http", records=1000, pages=50, requests=51, seconds=12.5),
+            "quotes": _source_stats(kind="browser", records=100, pages=10, requests=1, seconds=8.0),
+            "demo": _source_stats(kind="local", records=40, pages=4, requests=5, seconds=0.4),
         },
     }
     changes_body = {
@@ -168,7 +168,7 @@ def test_the_headline_figures_are_the_collection_not_the_tests(
     page = _page(results, run_dir, tmp_path)
     assert "<b>1140</b><span>records collected</span>" in page
     assert "<b>64</b><span>pages fetched</span>" in page
-    assert "<b>56</b><span>requests made</span>" in page
+    assert "<b>57</b><span>requests made</span>" in page
     assert "<b>10</b><span>changes detected</span>" in page
 
 
@@ -176,8 +176,53 @@ def test_every_source_is_a_row_with_its_own_numbers(
     results: Path, run_dir: Path, tmp_path: Path
 ) -> None:
     prose = _prose(_page(results, run_dir, tmp_path))
-    assert "books.toscrape.com</th><td>1000</td><td>50</td><td>51</td>" in prose
-    assert "the demo store</th><td>40</td><td>4</td><td>5</td>" in prose
+    assert "books.toscrape.com</th><td>http</td><td>1000</td><td>50</td><td>51</td>" in prose
+    assert "the demo store</th><td>local</td><td>40</td><td>4</td><td>5</td>" in prose
+
+
+def test_each_source_says_which_door_it_went_through(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """The door is the decision this project makes a point of, so the table states it.
+
+    Printed as the run recorded it rather than translated on the way to the page:
+    `run-stats.json` carries the word the source itself declares, and a second
+    vocabulary here would be a second thing to keep in step.
+    """
+    prose = _prose(_page(results, run_dir, tmp_path))
+    assert "quotes.toscrape.com</th><td>browser</td>" in prose
+    assert '<th scope="col">Door</th>' in prose
+
+
+def test_a_source_that_recorded_no_door_says_so_rather_than_guessing_one(
+    results: Path, tmp_path: Path
+) -> None:
+    stats = _source_stats(records=40, pages=4, requests=5)
+    del stats["kind"]
+    _write_run(
+        tmp_path / "run",
+        stats={"demo": stats},
+        changes={"demo": {"added": 0, "removed": 0, "changed": 0, "changes": []}},
+    )
+    assert "the demo store</th><td>—</td>" in _prose(_page(results, tmp_path / "run", tmp_path))
+
+
+def test_a_skipped_source_still_shows_the_door_it_would_have_used(
+    results: Path, tmp_path: Path
+) -> None:
+    """The table has the same number of cells on every row, including a row that is a
+    sentence: a skipped source was going to go through a door, and saying which one
+    costs nothing and keeps the column honest."""
+    _write_run(
+        tmp_path / "run",
+        stats={
+            "books": _source_stats(kind="http", skipped=True, reason="books.toscrape.com answered HTTP 503"),
+            "demo": _source_stats(records=40, pages=4, requests=5),
+        },
+        changes={"demo": {"added": 0, "removed": 0, "changed": 0, "changes": []}},
+    )
+    prose = _prose(_page(results, tmp_path / "run", tmp_path))
+    assert 'books.toscrape.com</th><td>http</td><td colspan="5">not collected' in prose
 
 
 def test_a_run_with_no_sources_is_an_error_not_a_page_of_zeroes(tmp_path: Path) -> None:

@@ -16,7 +16,7 @@ from selectolax.parser import HTMLParser
 
 from scrapewatch.http import PoliteClient
 from scrapewatch.models import RawRecord
-from scrapewatch.sources.base import SourceStats
+from scrapewatch.sources.base import SourceStats, fetch_refused
 
 DEFAULT_BASE_URL = "https://books.toscrape.com"
 
@@ -144,7 +144,8 @@ class BooksSource:
     """Walks the book catalogue's listing pages, one `PoliteClient.get()` at a time."""
 
     name = "books"
-    kind = "books"
+    #: The door, not the record type: this catalogue is read over plain HTTP.
+    kind = "http"
 
     def __init__(
         self,
@@ -169,49 +170,54 @@ class BooksSource:
         page's raw text and carries no stock count; `normalize()` treats that as
         "unknown", not zero, which is the correct reading of a listing page alone.
         """
-        root_url = f"{self._base_url}/"
-        if not self._client.allowed(root_url):
-            reason = self._client.robots_refusal_reason or f"robots.txt disallows {root_url}"
-            raise RuntimeError(f"books: fetch refused by robots.txt: {reason}")
+        with self._source_stats.measuring(self._client.stats):
+            root_url = f"{self._base_url}/"
+            if not self._client.allowed(root_url):
+                raise fetch_refused(self.name, self._client, root_url)
 
-        path: str | None = None  # None means the front page itself
-        pages_fetched = 0
-        while True:
-            url = root_url if path is None else urljoin(root_url, path)
-            response = self._client.get(url)
-            pages_fetched += 1
-            records, next_path = parse_listing(response.text)
+            path: str | None = None  # None means the front page itself
+            pages_fetched = 0
+            while True:
+                url = root_url if path is None else urljoin(root_url, path)
+                response = self._client.get(url)
+                pages_fetched += 1
+                records, next_path = parse_listing(response.text)
 
-            for record in records:
-                fields = {
-                    "title": record["title"],
-                    "price": record["price"],
-                    "availability": record["availability"],
-                    "rating": record["rating"],
-                }
-                absolute_url = urljoin(root_url, record["url"])
-                if self._with_details:
-                    detail_response = self._client.get(absolute_url)
-                    detail = parse_detail(detail_response.text)
-                    fields["category"] = detail["category"]
-                    fields["availability"] = detail["availability"]
-                self._source_stats.records += 1
-                yield RawRecord(
-                    source=self.name,
-                    external_id=record["external_id"],
-                    fetched_at=datetime.now(UTC),
-                    fields=fields,
-                    url=absolute_url,
-                )
+                for record in records:
+                    fields = {
+                        "title": record["title"],
+                        "price": record["price"],
+                        "availability": record["availability"],
+                        "rating": record["rating"],
+                    }
+                    absolute_url = urljoin(root_url, record["url"])
+                    if self._with_details:
+                        detail_response = self._client.get(absolute_url)
+                        detail = parse_detail(detail_response.text)
+                        fields["category"] = detail["category"]
+                        fields["availability"] = detail["availability"]
+                    self._source_stats.records += 1
+                    yield RawRecord(
+                        source=self.name,
+                        external_id=record["external_id"],
+                        fetched_at=datetime.now(UTC),
+                        fields=fields,
+                        url=absolute_url,
+                    )
 
-            self._source_stats.pages = pages_fetched
-            if next_path is None:
-                break
-            if self._max_pages is not None and pages_fetched >= self._max_pages:
-                break
-            path = next_path
+                self._source_stats.pages = pages_fetched
+                if next_path is None:
+                    break
+                if self._max_pages is not None and pages_fetched >= self._max_pages:
+                    break
+                path = next_path
 
     @property
     def stats(self) -> dict:
-        """Pages and records this source counted, merged with the client's `FetchStats`."""
+        """Pages and records this source counted, with its own share of the client's totals.
+
+        Its own share, not the client's running totals: one client serves every
+        source in a run, so the difference since this source started is the only
+        honest answer to "what did collecting this cost".
+        """
         return self._source_stats.as_dict(self._client.stats)

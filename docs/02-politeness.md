@@ -42,12 +42,19 @@ once.
 | --- | --- | --- |
 | Returned rules containing a matching `Disallow` | Refuses the fetch | The site said no. |
 | Answered 404 (or any 4xx) | Allows everything | There is no file, so nothing is restricted. |
-| Returned a 5xx that survived the retries, or never answered at all | Refuses the fetch, and records why | The rules could not be read, and a scraper that cannot read the rules does not get to assume there are none. |
+| Returned a 5xx that survived the retries | Refuses the fetch, and records why | The rules could not be read, and a scraper that cannot read the rules does not get to assume there are none. |
+| Never answered at all — DNS, a refused connection, a timeout | Skips the fetch, and says the host did not answer | Same policy, different news: there is no file to have been refused by, and the reason has to say so. |
 
-The third row is the one worth arguing about, and the argument is short: the
+The last two rows are the one worth arguing about, and the argument is short: the
 alternative is guessing "probably allowed" on behalf of a server already having a
-bad day. `_RobotsState.unreachable_reason` carries the sentence and
+bad day. `_RobotsState.unreadable_reason` carries the sentence and
 `PoliteClient.robots_refusal_reason` hands it to whoever asked.
+
+They are one policy and two sentences on purpose. A host that never answered has
+not refused anything: calling that "refused by `robots.txt`" sends whoever reads
+the published page looking for a rule in a file nobody ever managed to read.
+[`sources/base.py`](../src/scrapewatch/sources/base.py)'s `fetch_refused` is where
+the two are told apart, from `PoliteClient.robots_origin_unreachable`.
 
 ## What a refusal looks like from the outside
 
@@ -65,7 +72,7 @@ numbers would be:
   "retries": 0,
   "bytes": 0,
   "seconds": 0,
-  "kind": "books",
+  "kind": "http",
   "skipped": true,
   "reason": "books: fetch refused by robots.txt: robots.txt at https://books.toscrape.com returned HTTP 503 after retries",
   "parse_errors": 0,
@@ -73,8 +80,18 @@ numbers would be:
 }
 ```
 
-Two details are deliberate. The counters read zero even though fetching robots.txt
-did cost a request: a skipped source reports the collection it did not make. And
-`reason` is a sentence rather than a code, because the CLI prints it, the published
-page states it, and a person has to decide from it whether the site refused or the
-night simply failed to ask.
+Three details are deliberate. The counters read zero even though fetching
+robots.txt did cost a request: a skipped source reports the collection it did not
+make. `kind` is the door the source goes through — `http`, `browser` or `local` —
+not what it collects, so the page can say how a source was reached even on a night
+it was not. And `reason` is a sentence rather than a code, because the CLI prints
+it, the published page states it, and a person has to decide from it whether the
+site refused or the night simply failed to ask.
+
+The counters are per source, not per client. One `PoliteClient` serves the whole
+run, so its `FetchStats` is a running total; a source reports the difference
+between the totals as it started and as it finished
+([`sources/base.py`](../src/scrapewatch/sources/base.py), `SourceStats.measuring`).
+The browser source adds the half the client cannot see: a rendered page is not an
+HTTP request and has no rate limit or retry budget to share, so `QuotesSource`
+counts its page loads itself and adds their wall-clock time to its seconds.

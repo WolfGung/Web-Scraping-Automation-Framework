@@ -30,7 +30,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from scrapewatch.config import Settings
 from scrapewatch.models import RawRecord, Record
 from scrapewatch.pipeline.diff import ChangeSet, diff
 from scrapewatch.pipeline.normalize import normalize
@@ -105,16 +104,15 @@ def _normalize_all(raw_records: list[RawRecord]) -> tuple[list[Record], list[str
     return records, reasons
 
 
-def run_sources(sources: list[Source], storage: Storage, settings: Settings, out_dir: Path) -> RunResult:
+def run_sources(sources: list[Source], storage: Storage, out_dir: Path) -> RunResult:
     """Run every source, save what it saw, diff it against its last snapshot, and report.
 
     Writes `run-stats.json` and `change-report.json`/`.html` into `out_dir`, which is
     created if missing, unconditionally — even a run where every source failed writes
-    both files, saying so. `settings` is accepted for the shape sources will need it
-    for (a base URL, timeouts); nothing in this function reads it directly yet.
+    both files, saying so. Settings are not passed in: a source is handed the client,
+    the session and the limits it needs when it is built, and this function reads none
+    of them.
     """
-    del settings  # not needed by this task's sources; kept for the interface's sake
-
     for source in sources:
         _validate_source(source)
 
