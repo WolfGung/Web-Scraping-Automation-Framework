@@ -148,3 +148,14 @@ A site that did not answer is skipped with its reason in `run-stats.json`, and t
 
 - [`docs/01-what-it-scrapes-and-why.md`](docs/01-what-it-scrapes-and-why.md) — why these two sites and a store of our own, why an external id is a slug or a hash, and why the page leads with the data.
 - [`docs/02-politeness.md`](docs/02-politeness.md) — the rules the client enforces, where each one lives in the code, and what a refusal looks like when it happens.
+
+## Related work
+
+Two more repositories from the same portfolio:
+
+- **[Toolshop-Test-Automation-Framework](https://github.com/WolfGung/Toolshop-Test-Automation-Framework)** — a test automation framework built from scratch for an online shop: API, browser and end-to-end cases against a public demo shop or a local Docker stand, with test design documents.
+- **[Marketplace-Test-Automation-Framework](https://github.com/WolfGung/Marketplace-Test-Automation-Framework)** — API and browser tests for a marketplace demo shop, with a smoke set, video and traces per browser test and a published Allure report with a trend.
+
+## Hire me
+
+I take short, well-defined jobs: a test automation framework from scratch, an API test suite for an existing backend, end-to-end tests for a critical flow, fixing flaky tests and reducing run time, setting up CI for existing tests, scrapers and data pipelines. Profile on Guru: [https://www.guru.com/freelancers/pavel-zhukov-atum](https://www.guru.com/freelancers/pavel-zhukov-atum). Time zone UTC plus two; I work in writing.
