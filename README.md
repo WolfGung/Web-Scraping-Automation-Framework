@@ -53,16 +53,18 @@ Storage is SQLAlchemy over SQLite by default — one clone and it runs — or Po
 
 ## Run it
 
-Three commands, and nothing on the machine but Python 3.12. None of them touches a site this project scrapes.
+Two commands, and nothing on the machine but Python 3.12. Neither of them touches a site this project scrapes.
 
 ```bash
-make install          # the project and its dev extras, editable
+make install          # the project and its dev extras, editable, plus Chromium
 make test             # the whole gate: every check that needs no network
 ```
 
+`make install` also installs the browser, because `make test` drives one: the gate includes the browser checks, and a clean clone whose first command fails for a missing Chromium has failed for a reason that has nothing to do with the code. It asks for the browser's OS packages too, which needs root; if that is refused it installs the browser alone and says so, which on most machines is all that was needed.
+
 `make test` is `pytest -m "not live"`. It ends green with no site reachable at all — the parsers run against pages saved under [`tests/fixtures/`](tests/fixtures), and the browser checks drive a demo store the suite starts itself on loopback.
 
-Then watch it actually collect something. In one terminal:
+Then watch it actually collect something — the store in one terminal, the scrape in another (or skip both and use the Docker one-liner below, which runs the pair for you). In one terminal:
 
 ```bash
 scrapewatch demo-store        # the demo store on http://127.0.0.1:8765
