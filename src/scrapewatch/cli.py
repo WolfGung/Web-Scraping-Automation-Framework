@@ -262,6 +262,11 @@ def scrape(
     if names is None:
         typer.echo(_unknown_source_message(source))
         raise typer.Exit(code=2)
+    if keep_snapshots < 2:
+        # Checked before a single request goes out: `Storage.prune` refuses the same
+        # value, but only after the scrape has already spent its traffic on a typo.
+        typer.echo(f"--keep-snapshots must be at least 2 — a diff compares two snapshots — got {keep_snapshots}")
+        raise typer.Exit(code=2)
     skips = _caller_skips(
         source,
         skip_books=skip_books,

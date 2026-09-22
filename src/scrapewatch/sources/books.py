@@ -111,12 +111,13 @@ def parse_listing(html: str) -> tuple[list[dict], str | None]:
 
 
 def parse_detail(html: str) -> dict:
-    """Parse a detail page for the fields only it carries: category, stock count, description.
+    """Parse a detail page for the fields only it carries: category and description.
 
     `category` comes from the breadcrumb's third item (`Home / Books / <category> /
-    <title>`); `availability` is read again here because the detail page's version
-    carries the stock count the listing page never shows (`normalize()` treats it as
-    a separate, optional-vs-required concern — see `_parse_availability`).
+    <title>`); `availability` is read again here because the detail page states it
+    more authoritatively than the listing, and `normalize()` turns it into the same
+    `in_stock` flag either way — a stock *count* is not something this project
+    records for books (see `_parse_availability`).
     """
     tree = HTMLParser(html)
     crumbs = tree.css("ul.breadcrumb li")
@@ -166,9 +167,10 @@ class BooksSource:
         Checks `allowed()` on the base URL first and raises a clear error naming the
         refusal reason when robots.txt forbids it or could not be read — `run_sources`
         turns that exception into a skipped source with this message. With
-        `with_details=False` (the default) a listing record's `availability` is the
-        page's raw text and carries no stock count; `normalize()` treats that as
-        "unknown", not zero, which is the correct reading of a listing page alone.
+        `with_details=False` (the default) a record carries only what the listing
+        page shows — title, price, availability text, rating — and no `category`;
+        the detail page costs one more request per book, which is the caller's
+        choice, not the default.
         """
         with self._source_stats.measuring(self._client.stats):
             root_url = f"{self._base_url}/"

@@ -7,7 +7,7 @@ User-Agent, and a robots.txt check that honours what it finds.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from urllib import robotparser
 from urllib.parse import urlsplit
 
@@ -24,11 +24,11 @@ class FetchStats:
 
     A single client serves every HTTP source in a run — the per-host clock and the
     robots cache only work if it does — so these numbers keep climbing from one
-    source to the next. A source that wants to report *its own* traffic takes a
-    `copy()` before it starts and reports the difference; that is what
-    `scrapewatch.sources.base.SourceStats` does, and why the page's "requests made"
-    is the traffic this project actually caused rather than each source repeating
-    the ones before it.
+    source to the next. A source that wants to report *its own* traffic snapshots
+    these counters before it starts and again when it finishes, and reports the
+    difference; that is what `scrapewatch.sources.base.SourceStats` does, and why
+    the page's "requests made" is the traffic this project actually caused rather
+    than each source repeating the ones before it.
     """
 
     requests: int = 0
@@ -36,15 +36,6 @@ class FetchStats:
     bytes: int = 0
     seconds: float = 0.0
     hosts: dict[str, int] = field(default_factory=dict)
-
-    def copy(self) -> FetchStats:
-        """These counters as they stand now, unaffected by whatever is counted next.
-
-        `hosts` is rebuilt rather than shared: a shallow copy would hand back the
-        dict the client goes on mutating, and a "before" that moves with the "after"
-        is not a baseline at all.
-        """
-        return replace(self, hosts=dict(self.hosts))
 
 
 @dataclass

@@ -94,6 +94,10 @@ class QuotesSource:
         #: Wall-clock seconds spent inside `BrowserSession.render`, which nothing else
         #: counts: the polite client never sees a browser page load.
         self._render_seconds = 0.0
+        #: `_render_seconds` as it stood when `fetch()` finished — the value `stats`
+        #: reports, so the browser half freezes with the client half rather than
+        #: growing on a later `cross_check()`.
+        self._reported_render_seconds: float | None = None
 
     def fetch(self) -> Iterator[RawRecord]:
         """Render `/js/` and follow `li.next a[href]` until none remain or `max_pages` is hit.
@@ -102,34 +106,37 @@ class QuotesSource:
         follows: a refusal becomes a `RuntimeError` naming the reason, which
         `run_sources` turns into a skipped source rather than a crash.
         """
-        with self._source_stats.measuring(self._client.stats):
-            root_url = f"{self._base_url}/"
-            if not self._client.allowed(root_url):
-                raise fetch_refused(self.name, self._client, root_url)
+        try:
+            with self._source_stats.measuring(self._client.stats):
+                root_url = f"{self._base_url}/"
+                if not self._client.allowed(root_url):
+                    raise fetch_refused(self.name, self._client, root_url)
 
-            page_url = f"{self._base_url}/js/"
-            pages_fetched = 0
-            while True:
-                html = self._render(page_url)
-                pages_fetched += 1
-                for quote in parse_quotes(html):
-                    external_id = hashlib.sha1((quote["text"] + quote["author"]).encode()).hexdigest()[:16]
-                    self._source_stats.records += 1
-                    yield RawRecord(
-                        source=self.name,
-                        external_id=external_id,
-                        fetched_at=datetime.now(UTC),
-                        fields={"text": quote["text"], "author": quote["author"], "tags": quote["tags"]},
-                        url=page_url,
-                    )
-                self._source_stats.pages = pages_fetched
+                page_url = f"{self._base_url}/js/"
+                pages_fetched = 0
+                while True:
+                    html = self._render(page_url)
+                    pages_fetched += 1
+                    for quote in parse_quotes(html):
+                        external_id = hashlib.sha1((quote["text"] + quote["author"]).encode()).hexdigest()[:16]
+                        self._source_stats.records += 1
+                        yield RawRecord(
+                            source=self.name,
+                            external_id=external_id,
+                            fetched_at=datetime.now(UTC),
+                            fields={"text": quote["text"], "author": quote["author"], "tags": quote["tags"]},
+                            url=page_url,
+                        )
+                    self._source_stats.pages = pages_fetched
 
-                next_node = HTMLParser(html).css_first("li.next a[href]")
-                if next_node is None:
-                    break
-                if self._max_pages is not None and pages_fetched >= self._max_pages:
-                    break
-                page_url = urljoin(page_url, next_node.attributes["href"])
+                    next_node = HTMLParser(html).css_first("li.next a[href]")
+                    if next_node is None:
+                        break
+                    if self._max_pages is not None and pages_fetched >= self._max_pages:
+                        break
+                    page_url = urljoin(page_url, next_node.attributes["href"])
+        finally:
+            self._reported_render_seconds = self._render_seconds
 
     def _render(self, url: str) -> str:
         """`BrowserSession.render`, with the wall-clock time it took added to `seconds`.
@@ -149,10 +156,12 @@ class QuotesSource:
 
         `seconds` is the client's share plus the browser renders: the two halves of
         what collecting this source actually took, in one number, since the page
-        states one duration per source.
+        states one duration per source. Both halves are frozen when `fetch()` ends;
+        before that, the live counter is what there is.
         """
         stats = self._source_stats.as_dict(self._client.stats)
-        stats["seconds"] = stats["seconds"] + self._render_seconds
+        frozen = self._reported_render_seconds
+        stats["seconds"] = stats["seconds"] + (self._render_seconds if frozen is None else frozen)
         return stats
 
     def cross_check(self) -> int:

@@ -241,3 +241,17 @@ def test_record_scroll_writes_the_recording_and_the_trace_the_page_publishes(tmp
     assert (tmp_path / "media" / "scroll.webm").stat().st_size > 0
     assert (tmp_path / "media" / "scroll-trace.zip").stat().st_size > 0
     assert "40 products scrolled" in result.output
+
+
+@pytest.mark.unit
+def test_a_retention_below_two_is_refused_before_any_request_goes_out() -> None:
+    """The `--keep-snapshots` floor is checked at the door, not after the scrape.
+
+    `Storage.prune` refuses the same value, but by then a full catalogue has been
+    fetched from somebody else's server; the point of the CLI check is that a typo
+    costs nothing. The demo URL points at a closed port so a request would show
+    up as a skip, not as the exit code asserted here.
+    """
+    result = CliRunner().invoke(app, ["scrape", "demo", "--keep-snapshots", "1", "--demo-url", "http://127.0.0.1:1"])
+    assert result.exit_code == 2, result.output
+    assert "--keep-snapshots must be at least 2" in result.output and "skipped" not in result.output
