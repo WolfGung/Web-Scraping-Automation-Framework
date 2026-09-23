@@ -17,6 +17,8 @@ import pytest
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
+from scrapewatch.cli import SHEET_TITLES
+from scrapewatch.sources import KNOWN_SOURCES
 from scrapewatch.workbook import (
     CHANGES_HEADER,
     CHANGES_TITLE,
@@ -237,3 +239,11 @@ def test_a_night_without_changes_has_a_header_and_no_rows(tmp_path: Path) -> Non
     changes = _written(tmp_path, sheets=[DEMO], changes=[])[CHANGES_TITLE]
     assert [cell.value for cell in changes[1][: len(CHANGES_HEADER)]] == list(CHANGES_HEADER)
     assert changes.max_row == 1
+
+
+def test_every_source_the_project_scrapes_has_a_sheet_title() -> None:
+    """A source with no title of its own would reach the workbook under its code
+    name, two with one title would collide, and `Changes` is taken."""
+    assert set(SHEET_TITLES) == set(KNOWN_SOURCES)
+    assert len(set(SHEET_TITLES.values())) == len(SHEET_TITLES)
+    assert CHANGES_TITLE not in SHEET_TITLES.values()

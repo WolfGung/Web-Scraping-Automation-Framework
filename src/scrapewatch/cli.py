@@ -32,7 +32,7 @@ from scrapewatch.browser import BrowserSession
 from scrapewatch.config import Settings
 from scrapewatch.demo_store.app import create_app
 from scrapewatch.http import PoliteClient
-from scrapewatch.pipeline.diff import diff
+from scrapewatch.pipeline.diff import ChangeSet, diff
 from scrapewatch.pipeline.report import ChangeReport
 from scrapewatch.pipeline.run import run_sources
 from scrapewatch.sources import FULL_RUN_SIZES, KNOWN_SOURCES
@@ -40,7 +40,8 @@ from scrapewatch.sources.base import Source
 from scrapewatch.sources.books import BooksSource
 from scrapewatch.sources.demo import DemoSource
 from scrapewatch.sources.quotes import QuotesSource
-from scrapewatch.storage import Storage
+from scrapewatch.storage import Storage, export_layout
+from scrapewatch.workbook import COLLECTED_AT, Change, Sheet, write_workbook
 
 app = typer.Typer(help="ScrapeWatch: polite multi-source scraping with change detection.")
 
@@ -64,6 +65,14 @@ SOURCE_KINDS: dict[str, str] = {
 #: writes `<source>.<ext>` for each, which is exactly what the published page links
 #: (`showcase.build.DATA_FILES`); a name that is not here is never written.
 EXPORT_FORMATS: dict[str, tuple[str, ...]] = {"books": ("csv", "json"), "quotes": ("json",), "demo": ("json",)}
+
+#: The workbook `--export-dir` writes beside those files: every source the run
+#: collected, a sheet each, then the night's changes (`scrapewatch.workbook`).
+WORKBOOK_FILE = "scrapewatch.xlsx"
+
+#: What each source's sheet in that workbook is called, for a reader rather than
+#: for the code: `demo` is the store this repository ships, not a site's name.
+SHEET_TITLES: dict[str, str] = {"books": "Books", "quotes": "Quotes", "demo": "Demo store"}
 
 #: How many snapshots per source the database keeps by default. The file is
 #: published every night, so its history is bounded on purpose; the page states the
@@ -222,6 +231,49 @@ def _export_collected(storage: Storage, stats: dict[str, dict], export_dir: Path
     return written
 
 
+def _export_workbook(storage: Storage, stats: dict[str, dict], report: ChangeReport, export_dir: Path) -> Path | None:
+    """Write the night's workbook beside the exports, or nothing if nothing was collected.
+
+    Each sheet is the export's own layout of the same latest snapshot, so it cannot
+    disagree with the CSV and JSON beside it, and the marks are the diff this run
+    made. A source with no earlier snapshot has nothing to compare with — its diff
+    calls every record new — so it is marked with nothing and named in a note.
+    """
+    sheets: list[Sheet] = []
+    changes: list[Change] = []
+    uncompared: list[str] = []
+    for name, body in stats.items():
+        if body.get("skipped"):
+            continue
+        latest, *previous = storage.latest_snapshots(name, n=2)
+        header, rows = export_layout(latest)
+        collected_at = {record.external_id: record.fetched_at for record in latest}
+        title = SHEET_TITLES.get(name, name)
+        changeset = report.changesets.get(name, ChangeSet()) if previous else ChangeSet()
+        if not previous:
+            uncompared.append(title)
+        sheets.append(
+            Sheet(
+                title=title,
+                header=[*header, COLLECTED_AT],
+                rows=[[*(row[column] for column in header), collected_at[row["external_id"]]] for row in rows],
+                changed=frozenset((change.external_id, change.field) for change in changeset.changed),
+                added=frozenset(record.external_id for record in changeset.added),
+            )
+        )
+        changes += [
+            Change(title, change.external_id, "changed", change.field, change.before, change.after)
+            for change in changeset.changed
+        ]
+        changes += [Change(title, record.external_id, "added", after=record.fields) for record in changeset.added]
+        changes += [Change(title, record.external_id, "removed", before=record.fields) for record in changeset.removed]
+    if not sheets:
+        return None
+    path = Path(export_dir) / WORKBOOK_FILE
+    write_workbook(path, sheets, changes, uncompared=uncompared)
+    return path
+
+
 @app.command()
 def scrape(
     source: str = typer.Argument(..., help="books, quotes, demo, or all."),
@@ -311,6 +363,9 @@ def scrape(
             # would have reached anyway.
             storage.vacuum()
         exported = _export_collected(storage, stats, export_dir) if export_dir is not None else []
+        workbook = _export_workbook(storage, stats, result.report, export_dir) if export_dir is not None else None
+        if workbook is not None:
+            exported.append(workbook)
     except Exception as exc:  # a bad --db-url or a run that never produced a result: report it, don't crash
         typer.echo(f"scrape failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc

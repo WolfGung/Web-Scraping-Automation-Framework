@@ -174,6 +174,26 @@ def _csv_safe(value: Any) -> Any:
     return value
 
 
+def export_layout(records: list[Record]) -> tuple[list[str], list[dict[str, Any]]]:
+    """A snapshot laid out as every export of it is: a header, then one row per record.
+
+    Rows are sorted by `external_id`, so repeat exports match byte for byte, and the
+    columns are the fields in name order, then `external_id` and `url`. The CSV, the
+    JSON and the workbook are all written from this, which is what keeps them
+    saying the same thing.
+    """
+    ordered = sorted(records, key=lambda record: record.external_id)
+    field_keys = sorted({key for record in ordered for key in record.fields})
+    header = [*field_keys, "external_id", "url"]
+    rows = []
+    for record in ordered:
+        row: dict[str, Any] = {key: record.fields.get(key) for key in field_keys}
+        row["external_id"] = record.external_id
+        row["url"] = record.url
+        rows.append(row)
+    return header, rows
+
+
 def _row_to_record(row: RecordRow) -> Record:
     return Record(
         source=row.source,
@@ -389,16 +409,7 @@ class Storage:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         snapshots = self.latest_snapshots(source, n=1)
-        records = sorted(snapshots[0], key=lambda record: record.external_id) if snapshots else []
-        field_keys = sorted({key for record in records for key in record.fields})
-        header = [*field_keys, "external_id", "url"]
-
-        rows = []
-        for record in records:
-            row: dict[str, Any] = {key: record.fields.get(key) for key in field_keys}
-            row["external_id"] = record.external_id
-            row["url"] = record.url
-            rows.append(row)
+        header, rows = export_layout(snapshots[0] if snapshots else [])
 
         if fmt == "csv":
             with path.open("w", newline="", encoding="utf-8") as handle:

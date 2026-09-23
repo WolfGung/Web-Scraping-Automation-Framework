@@ -22,13 +22,15 @@ from __future__ import annotations
 import json
 
 import pytest
+from openpyxl import load_workbook
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
-from scrapewatch.cli import _refuse_a_short_scroll, app
+from scrapewatch.cli import SHEET_TITLES, WORKBOOK_FILE, _refuse_a_short_scroll, app
 from scrapewatch.sources import FULL_RUN_SIZES
 from scrapewatch.storage import SnapshotRow
+from scrapewatch.workbook import CHANGES_TITLE
 
 
 @pytest.mark.unit
@@ -182,8 +184,18 @@ def test_export_dir_writes_the_sources_the_run_actually_collected(tmp_path, demo
         ],
     )
     assert result.exit_code == 0, result.output
-    assert sorted(p.name for p in (tmp_path / "exports").iterdir()) == ["demo.json"]
-    assert str(tmp_path / "exports" / "demo.json") in result.output
+    exports = tmp_path / "exports"
+    assert sorted(p.name for p in exports.iterdir()) == ["demo.json", WORKBOOK_FILE]
+    assert str(exports / "demo.json") in result.output
+    assert str(exports / WORKBOOK_FILE) in result.output
+
+    # The workbook is an export too, and follows the same verdict: a sheet for the
+    # one source the run collected, holding a row for every record beside it in
+    # the JSON, and the Changes sheet after it.
+    workbook = load_workbook(exports / WORKBOOK_FILE)
+    assert workbook.sheetnames == [SHEET_TITLES["demo"], CHANGES_TITLE]
+    records = json.loads((exports / "demo.json").read_text(encoding="utf-8"))
+    assert workbook[SHEET_TITLES["demo"]].max_row - 1 == len(records)
 
 
 @pytest.mark.e2e
