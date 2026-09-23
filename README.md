@@ -32,7 +32,7 @@ Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.
 
 That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
 
-[![The workflow's run page on GitHub, seen logged out: a green check beside the run's title, "Success" in the summary panel beside who pushed it and how long it took, and every job of the workflow listed down the side and in the graph.](showcase/images/ci-run.png)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/runs/35781328461)
+[![The workflow's run page on GitHub, seen logged out: a green check beside the run's title, "Success" in the summary panel beside who started it and how long it took, and every job of the workflow listed down the side and in the graph.](showcase/images/ci-run.png)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/runs/35883495531)
 
 That is the run behind the badge at the top of this page, as a visitor sees it — `PYTHONPATH=. python scripts/make-assets.py --ci-run` photographs it again, and refuses a run that is not green rather than committing a picture of one.
 
