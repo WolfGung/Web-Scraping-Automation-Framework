@@ -1,0 +1,554 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","930","test_the_rendered_page_and_the_api_agree_on_the_first_ten_quotes","tests.live","Wed Sep 23 09:46:42 UTC 2026","passed","Wed Sep 23 09:46:43 UTC 2026","","test_quotes_live","",""
+"","2","test_the_last_page_has_no_next_link","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_books_parser","",""
+"","1","test_categories_from_a_single_source_is_used_as_is","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","1","test_an_unqualified_key_that_disagrees_between_jobs_is_loud_not_silent","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","0","test_html_escapes_what_the_site_said","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_report","",""
+"Finding 2's stronger claim: the files are unconditional, not just ""usually there"".","5","test_every_source_failing_still_writes_both_output_files","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"","1","test_a_figure_states_the_number_the_code_holds[cover.html-quotes.toscrape.com-quotes]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The page leads with ""changes detected""; without the report there is no
+    figure to lead with, and publishing a zero would be a claim about the sites.","0","test_a_missing_change_report_stops_the_build","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_the_script_gives_the_builder_the_real_media_directory","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","0","test_a_figure_states_the_number_the_code_holds[architecture.svg-the demo store-products]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_availability_text_becomes_a_flag","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","0","test_rendered_markup_yields_text_author_and_tags","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_quotes_parser","",""
+"Number, unit and label are read from the markup, and muted text is skipped.","0","test_the_cover_reader_reads_the_counts_a_card_states","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The page links exactly what it copied and copies exactly what it links; a
+    stray file in the exports directory is neither.","4","test_a_file_nobody_asked_to_publish_is_not_published","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The one number in the README that is a setting rather than a count.","0","test_the_readme_spells_the_nightly_schedule_the_way_the_workflow_does","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"`broken` is what Allure records for a connection error or a Playwright
+    timeout, which is most of what a live check dies of.","4","test_a_broken_live_check_is_red_like_a_failed_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The grouping must not swallow a parametrised case into its sibling.","0","test_two_parameters_of_one_test_stay_two_tests","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"Data is substituted in, never substituted into: a skip reason quoting
+    `{{RECORDS}}` must reach the page as those characters.","3","test_a_value_that_looks_like_a_placeholder_is_not_read_as_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The structured readers only see numbers written the way they expect.
+
+    A count added to a drawing in some other shape — inside a sentence, in a box
+    with no title, in the description a screen reader hears — would be a number
+    nobody checks, and the readers above would never mention it. So every number
+    this module has checked is struck out of the text of each file, longest
+    first, and what is left may not contain a digit.
+    ","0","test_no_number_on_these_files_escapes_this_module[cover.html]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_status_nobody_planned_for_stops_the_build","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A source dropped before the run never reaches `run_sources`, so nothing in
+    the pipeline can write it down — and the published page could not then say
+    ""books was not collected, and here is what the site answered"". The CLI knows the
+    reason, because it was given it, so the CLI is where the entry is added.
+    ","2551","test_a_source_the_caller_skipped_reaches_the_run_statistics_with_its_reason","tests.unit","Wed Sep 23 09:44:48 UTC 2026","passed","Wed Sep 23 09:44:50 UTC 2026","","test_cli","",""
+"","0","test_a_document_states_the_number_the_code_holds[docs/01-what-it-scrapes-and-why.md-the book catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"`broken` is what Allure records when a test died of an exception rather than
+    of an assertion, which is every Playwright timeout and every connection error.
+    If it did not reach the failed figure, a run against a site that was down would
+    publish a green page beside a report full of red.","0","test_a_broken_result_is_counted_with_the_failures","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The pin bites: the reader reads the digits in the file, not a constant.","1","test_a_number_changed_in_a_figure_is_one_this_module_would_catch","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"Without this, a loose reading of the files would pass by finding nothing.","0","test_every_count_a_figure_states_is_one_this_module_checks","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"Writing it is a courtesy to the report, not a guarantee: `tests/conftest.py`
+    warns rather than failing when it cannot copy the file into a results
+    directory, so the merge must tolerate the result of that.","0","test_a_missing_categories_file_is_not_an_error","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","0","test_a_figure_spells_a_setting_the_way_the_project_spells_it[cover.html-the Python version]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The one test here that opens its own sessions: the settings are what it is about.
+
+    Both halves name the same directory. Asserting that a directory nothing was ever
+    pointed at does not exist would pass however the recording behaved — the off case
+    has to be pointed at the very directory the on case fills, or it is not testing
+    that recording was off.
+    ","1292","test_recording_is_off_by_default_and_on_when_asked","tests.e2e","Wed Sep 23 09:44:43 UTC 2026","passed","Wed Sep 23 09:44:45 UTC 2026","","test_browser_engine","",""
+"A picture that changed shape changed what it shows, and nobody chose that.
+
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
+    matches it is a file whose name lies.
+    ","0","test_a_committed_image_is_the_size_it_is_shown_at[guru-profile-banner-1000x250.png-size2]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","4","test_a_clean_run_does_not_announce_failures","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The `--keep-snapshots` floor is checked at the door, not after the scrape.
+
+    `Storage.prune` refuses the same value, but by then a full catalogue has been
+    fetched from somebody else's server; the point of the CLI check is that a typo
+    costs nothing. The demo URL points at a closed port so a request would show
+    up as a skip, not as the exit code asserted here.
+    ","3","test_a_retention_below_two_is_refused_before_any_request_goes_out","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"Finding 2, reproduced the way the reviewer did: storage breaks for source one.","12","test_a_storage_failure_on_one_source_does_not_stop_the_run","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"A live check that did not run says nothing about the site. Counting it as
+    ""did not pass"" would announce drift on a night when nothing drifted — and the
+    whole point of the live leg is that a red one means something.","5","test_a_skipped_live_check_is_not_reported_as_a_red_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A count belongs to the box it sits inside, and a box is titled by its top line.
+
+    The last text in this figure is shaped exactly like a count and sits in no
+    box at all, which is what a number dropped into a drawing without a home
+    looks like. The reader does not report it, and the guard over the raw text
+    is what catches it instead.
+    ","0","test_the_svg_reader_reads_a_count_out_of_the_box_that_holds_it","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"`record-scroll` against a live demo store, end to end.
+
+    The published page shows exactly two files, by name: the recording of the scroll
+    and the Playwright trace of it. A command that named them differently, or that
+    stopped scrolling at the first page, would leave the page to publish itself
+    without a video and say nothing about why — so both files and the number of
+    cards the scroll actually reached are asserted here.
+    ","2043","test_record_scroll_writes_the_recording_and_the_trace_the_page_publishes","tests.unit","Wed Sep 23 09:45:00 UTC 2026","passed","Wed Sep 23 09:45:02 UTC 2026","","test_cli","",""
+"","1","test_a_figure_spells_a_setting_the_way_the_project_spells_it[pipeline.svg-the nightly schedule]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","1","test_environment_properties_from_every_job_are_unioned","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","0","test_a_record_that_cannot_be_normalised_says_which_field","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","0","test_price_text_becomes_decimal_and_currency","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"Finding 4: `change_type` disambiguates the row; added/removed store no field payload.","13","test_changes_table_records_change_type_and_only_changed_rows_carry_a_payload","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","1160","test_the_coverage_table_states_the_number_of_cases_pytest_collects[integration]","tests.unit","Wed Sep 23 09:44:15 UTC 2026","passed","Wed Sep 23 09:44:16 UTC 2026","","test_readme_pins","",""
+"A marker with no row is a whole layer of the suite the README does not mention.","0","test_the_coverage_table_describes_every_marker_the_suite_registers","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"10 KiB is the floor: below it the file is a header, not a video.","3","test_a_truncated_recording_is_not_published","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_no_files_at_all_writes_nothing","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"The one catalogue in this repository can be counted rather than believed.
+
+    Counted on two different days, because the demo store moves its prices daily:
+    what moves is the price, not the number of products, and a change that broke
+    that would make the figures wrong on some days and right on others.
+    ","0","test_the_demo_stores_stated_size_is_the_catalogue_it_ships","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","1","test_counts_by_status","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","3","test_missing_diagrams_are_said_in_words_not_shown_as_broken_images","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_a_figure_states_the_number_the_code_holds[cover.html-books.toscrape.com-books]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The structured readers only see numbers written the way they expect.
+
+    A count added to a drawing in some other shape — inside a sentence, in a box
+    with no title, in the description a screen reader hears — would be a number
+    nobody checks, and the readers above would never mention it. So every number
+    this module has checked is struck out of the text of each file, longest
+    first, and what is left may not contain a digit.
+    ","1","test_no_number_on_these_files_escapes_this_module[architecture.svg]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The realistic case: the live job died before its artefact was uploaded, or a
+    download step was dropped from the workflow. Merging the two directories that
+    did arrive would publish a report — and a figure on the page — missing a whole
+    leg of the suite, which is exactly the kind of quiet wrong number this page
+    exists not to have.","0","test_a_missing_results_directory_stops_the_merge_and_names_it[merge_environment_properties]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"A reader who took the demo's daily price rotation for movement on somebody
+    else's live site would have been misled by this page, so the number and the
+    attribution are never in two different sentences.","4","test_the_demo_stores_changes_are_attributed_to_it_in_the_same_sentence","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A job that ran and produced nothing (every test deselected, say) leaves a
+    directory with no files in it. That is a fact about the run, not a delivery
+    failure, and it must not stop a publication.","0","test_an_empty_results_directory_is_not_a_missing_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","59","test_logging_in_unlocks_the_members_page_with_its_prices","tests.e2e","Wed Sep 23 09:44:45 UTC 2026","passed","Wed Sep 23 09:44:45 UTC 2026","","test_demo_store","",""
+"A marker added to `pyproject.toml` and not to this module would vanish from
+    the split on the page, silently. Fail here instead, where the fix is one line
+    and the message says which name is new.","1","test_the_builder_knows_every_marker_the_suite_registers","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_missing_environment_properties_file_is_not_an_error","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","0","test_added_and_removed_are_keyed_by_external_id","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_diff","",""
+"The figure states a page count; it is only a number if the division is exact.","0","test_the_books_catalogue_divides_into_whole_pages","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_figure_states_the_number_of_cases_pytest_collects[pipeline.svg-the browser check-cases]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","2625","test_scrape_demo_writes_stats_and_report","tests.unit","Wed Sep 23 09:44:45 UTC 2026","passed","Wed Sep 23 09:44:47 UTC 2026","","test_cli","",""
+"","0","test_a_figure_states_the_number_the_code_holds[architecture.svg-books.toscrape.com-catalogue pages]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The data is staged into `publish-data/` and the builder copies from there
+    into `site/data`, linking exactly what it copied. A copy straight into the site
+    would put a file on `gh-pages` that the page never mentions — which is the same
+    bug as the recording's, on a second artefact.","0","test_the_script_copies_no_data_file_into_the_site_itself","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","1","test_a_5xx_robots_txt_refuses_with_a_reason_after_retries","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"The page sums these blocks, so their sum has to be the traffic that happened.","0","test_the_per_source_blocks_add_up_to_the_run","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"","0","test_the_command_line_and_the_sources_package_know_the_same_sources","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_figure_spells_a_setting_the_way_the_project_spells_it[architecture.svg-the published database]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_mutating_a_returned_item_does_not_poison_the_cache","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_demo_catalogue","",""
+"All three copy the same file out of the repository, so a difference means
+    something else wrote one of them — and picking a side would hide that.","1","test_categories_that_disagree_between_jobs_stop_the_merge","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","0","test_a_document_states_the_number_the_code_holds[README.md-the quotes catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"Its API states a number for every product, so there is nothing to be unknown.","0","test_the_demo_store_keeps_its_real_count","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"The structured readers only see numbers written the way they expect.
+
+    A count added to a drawing in some other shape — inside a sentence, in a box
+    with no title, in the description a screen reader hears — would be a number
+    nobody checks, and the readers above would never mention it. So every number
+    this module has checked is struck out of the text of each file, longest
+    first, and what is left may not contain a digit.
+    ","0","test_no_number_on_these_files_escapes_this_module[data-sample.html]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_figure_states_the_number_of_cases_pytest_collects[pipeline.svg-the live checks-cases]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"It used to say ""records from three sources"" whatever happened, which is a
+    typed claim about a night in which one of them may not have answered at all.","3","test_the_lede_counts_the_sources_that_were_collected","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The branch outlives the worktree that held it, and a leftover one collides
+    with the next run in the same checkout.","1","test_the_script_cleans_up_the_branch_it_creates","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"The publish step may copy artefacts in before this runs — the data files
+    arrive exactly that way.","3","test_an_artefact_already_in_place_is_used_and_left_alone","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_it_honours_a_disallow_in_robots_txt","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"The door is the decision this project makes a point of, so the table states it.
+
+    Printed as the run recorded it rather than translated on the way to the page:
+    `run-stats.json` carries the word the source itself declares, and a second
+    vocabulary here would be a second thing to keep in step.
+    ","3","test_each_source_says_which_door_it_went_through","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","21","test_prune_leaves_another_sources_history_alone","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"A picture that changed shape changed what it shows, and nobody chose that.
+
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
+    matches it is a file whose name lies.
+    ","0","test_a_committed_image_is_the_size_it_is_shown_at[allure-report-screenshot.png-size1]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","19","test_run_sources_writes_stats_and_a_report_naming_the_sources_own_numbers","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"","12","test_two_runs_give_two_snapshots_and_the_diff_sees_the_change","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","3","test_a_run_url_that_is_not_a_link_is_dropped_rather_than_rendered","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","6","test_the_headline_figures_are_the_collection_not_the_tests","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_it_retries_a_5xx_and_counts_the_retry","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"The guard above must not be a way of always saying ""the one check"".","3","test_more_than_one_green_live_check_is_described_in_the_plural","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A picture that changed shape changed what it shows, and nobody chose that.
+
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
+    matches it is a file whose name lies.
+    ","0","test_a_committed_image_is_the_size_it_is_shown_at[guru-cover-image.png-size0]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"A documented, off-by-default escape hatch for discarding accumulated history,
+    meant to be set for exactly one publication.","0","test_the_script_supports_starting_the_trend_over","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","202","test_login_with_the_wrong_password_fails_fast_instead_of_looking_like_success","tests.e2e","Wed Sep 23 09:44:43 UTC 2026","passed","Wed Sep 23 09:44:43 UTC 2026","","test_browser_engine","",""
+"","0","test_identical_categories_from_every_job_merge_without_complaint","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","3","test_a_page_without_data_files_does_not_offer_them","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_it_gives_up_after_max_retries","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"","1","test_a_disallow_is_a_refusal_by_robots_txt","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_fetch_refusal","",""
+"","0","test_a_figure_states_the_number_the_code_holds[cover.html-the demo store-products]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the published retention]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"The exports are published for anyone to download and open in a spreadsheet.
+
+    Four characters start a formula there, and the text in these cells came off
+    somebody else's page: a title of `=1+1` would compute, and the same trick with
+    `HYPERLINK` or `WEBSERVICE` reaches further than that. The leading quote is the
+    convention every spreadsheet reads as ""this is text"". JSON carries the original,
+    because nothing evaluates JSON.
+    ","8","test_a_csv_cell_cannot_start_a_formula","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","27","test_the_demo_source_walks_every_page","tests.e2e","Wed Sep 23 09:44:45 UTC 2026","passed","Wed Sep 23 09:44:45 UTC 2026","","test_demo_store","",""
+"","4","test_every_source_is_a_row_with_its_own_numbers","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"It is what the next run pulls back to have a yesterday to diff against, so
+    the page says what it is rather than listing a file with an odd extension.","4","test_the_published_database_is_named_as_part_of_the_published_data","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A live failure is the drift signal this project exists to produce. Hiding it
+    to keep the page green would remove the one thing the page is evidence of.","4","test_a_red_live_check_is_stated_beside_the_report_button","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"`cp -r src dst` copies INTO an existing dst, which would leave the trend at
+    `history/history/*.json`, where Allure does not look.","0","test_the_carried_over_history_replaces_rather_than_nests","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","6","test_a_first_run_has_nothing_to_compare_against","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"A browser page load is not an HTTP request, so the client cannot see it at all.
+
+    Left to the client alone this source would report ""one request, no time"" for a
+    night spent driving Chromium: the one request is robots.txt. The renders are the
+    work, so the source counts them as pages and adds their wall-clock time to its
+    seconds.
+    ","12","test_the_browser_source_counts_its_page_loads_and_times_them","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"Finding 1: the tagged-Decimal round trip must reach through a list, not just top-level fields.","7","test_a_decimal_inside_a_list_round_trips_through_the_database","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"A document that points at a file which has moved is a document nobody can follow.","0","test_every_relative_link_resolves_to_something_in_the_repository[README.md]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"Two snapshots are what a diff is: tonight's, and the one it is compared against.
+
+    Keeping zero would delete the run's own snapshot; keeping one would leave the
+    next run nothing to compare it against. Both turn a change-detection tool into a
+    collector, quietly, one night later — so the retention refuses them by name.
+    ","5","test_prune_refuses_a_retention_that_leaves_nothing_to_diff[0]","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","1","test_a_figure_states_the_number_the_code_holds[architecture.svg-books.toscrape.com-books]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_html_shows_an_absent_side_as_a_placeholder_not_the_word_none","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_report","",""
+"","0","test_a_blank_quote_text_is_rejected","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","20","test_members_page_needs_a_login","tests.e2e","Wed Sep 23 09:44:45 UTC 2026","passed","Wed Sep 23 09:44:45 UTC 2026","","test_demo_store","",""
+"","3","test_a_run_without_the_html_report_does_not_link_it","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A stalled scroll writes a perfectly valid recording of nothing happening.
+
+    Nothing downstream can tell that apart from a good one — the file is there, the
+    right size, and it plays — so the check has to be here, and its message has to
+    name both numbers for whoever reads the failed run.
+    ","0","test_a_scroll_that_stopped_short_is_refused_by_name","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"","1","test_a_test_with_two_markers_stops_the_build_instead_of_being_counted_twice","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The same proof for the template the profile's image is exported from.","1","test_a_number_changed_on_the_cover_is_one_this_module_would_catch","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"And the other half: asked to publish, it does — `.nojekyll` and the page.","260","test_an_explicit_opt_in_publishes_the_assembled_site","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","1","test_environment_overrides_use_the_prefix","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_config","",""
+"The viewer link has to be absolute, so it is the one link on the page that
+    cannot be checked by following it relative to the file beside it. It is built
+    from the same constant the file is published under, and this is what keeps the
+    two spellings from drifting.","0","test_the_linked_trace_and_the_published_file_are_the_same_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_figure_states_the_number_the_code_holds[data-sample.html-a full run collects-books]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"A picture that changed shape changed what it shows, and nobody chose that.
+
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
+    matches it is a file whose name lies.
+    ","0","test_a_committed_image_is_the_size_it_is_shown_at[showcase/images/ci-run.png-size4]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","6","test_a_source_whose_fetch_raises_is_skipped_and_the_run_continues","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"","1","test_defaults_need_no_environment","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_config","",""
+"","0","test_a_scroll_that_reached_the_end_is_not_refused","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"The table adds up, so a reader can check it without running anything.","0","test_the_gate_row_is_the_sum_of_the_rows_above_it","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"A reading that matched nothing is a failure, not a pass over an empty set.","0","test_a_figure_stating_nothing_fails_instead_of_passing_over_an_empty_reading","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_figure_states_the_number_the_code_holds[cover.html-in one full run-records]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","6","test_decimal_and_datetime_round_trip_through_the_database","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","1","test_a_document_states_the_number_the_code_holds[docs/01-what-it-scrapes-and-why.md-the catalogue's pages]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"Deleting rows from SQLite frees space inside the file and never gives it back.
+
+    The database is published, so its size on disk is the size of somebody's
+    download. `prune` does the deleting and `vacuum` is what actually returns the
+    space — once per run, after every source, because VACUUM rewrites the whole file.
+    ","95","test_vacuum_shrinks_the_file_the_prune_emptied","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_storage","",""
+"","1","test_it_waits_between_requests_to_the_same_host","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the demo API's page size]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"Finding 1: a raw dict that already looks like a tagged decimal must not be silently misread.","4","test_a_field_colliding_with_the_reserved_decimal_tag_is_refused_loudly","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"One live check, so the sentence written for a plural would read as ""The 1
+    checks"" — each count gets prose that is true of it.","3","test_a_green_live_run_says_the_markup_still_matches","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1213","test_the_coverage_table_states_the_number_of_cases_pytest_collects[unit]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:14 UTC 2026","","test_readme_pins","",""
+"","0","test_the_unrendered_js_page_has_no_quotes_in_its_html","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_quotes_parser","",""
+"A source with no stated size is one the nightly live check cannot hold to one.","0","test_every_known_source_has_a_catalogue_size","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_consecutive_days_differ_in_a_few_prices_and_stock_flags_not_everything","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_demo_catalogue","",""
+"The gate, exercised rather than read.
+
+    A local run that turned out to have push credentials is how a ""dry run"" once
+    published synthetic data to a real gh-pages branch. Neither `GITHUB_ACTIONS` nor
+    `PUBLISH_SHOWCASE` is set here, and `origin` is a real repository this process
+    can certainly push to — so the only thing stopping it is the gate itself.
+    ","208","test_a_local_run_assembles_the_site_and_publishes_nothing","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","0","test_one_fact_written_two_different_ways_is_a_failure","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"A number added to a sentence has to be a number something here checks.
+
+    Every value this module pinned is struck out of the README's prose, longest
+    first, and what is left may not contain a digit. Without it, a new figure in
+    a new sentence would simply not be read by any of the patterns above, and
+    nothing would say so.
+    ","1","test_no_number_in_the_readme_escapes_this_module","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"","9","test_export_csv_and_json_carry_the_same_rows","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the retry budget]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the wait between two requests]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","3","test_a_missing_run_url_leaves_no_empty_link","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"One client asks several origins, and the flag describes the last answer only.","1","test_a_readable_robots_txt_clears_the_unreachable_flag","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"The server answered and could not tell us the rules. We do not guess there are none.","1","test_a_robots_txt_that_could_not_be_read_is_also_a_refusal","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_fetch_refusal","",""
+"Only the builder may write there; a `cp` to the same path from here is the
+    conflicting write the divergence came from.","1","test_the_script_copies_nothing_into_the_sites_media_directory","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"The realistic case: the live job died before its artefact was uploaded, or a
+    download step was dropped from the workflow. Merging the two directories that
+    did arrive would publish a report — and a figure on the page — missing a whole
+    leg of the suite, which is exactly the kind of quiet wrong number this page
+    exists not to have.","0","test_a_missing_results_directory_stops_the_merge_and_names_it[merge_categories]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"","3","test_the_change_report_is_published_beside_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_out_of_stock_is_read_as_out_of_stock","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","0","test_a_figure_spells_a_setting_the_way_the_project_spells_it[data-sample.html-the file it shows]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","4","test_a_test_that_only_passed_on_a_rerun_is_named_on_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_document_states_the_number_the_code_holds[README.md-the demo catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"`--export-dir` writes `<source>.<format>`; the page links exactly those.
+
+    The database is the one published file no export produces — it is the storage
+    itself, copied in by the publish step — so it is the one name taken out of the
+    comparison rather than left to look like a missing export.
+    ","0","test_the_files_the_cli_exports_are_the_files_the_page_publishes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The table has the same number of cells on every row, including a row that is a
+    sentence: a skipped source was going to go through a door, and saying which one
+    costs nothing and keeps the column honest.","4","test_a_skipped_source_still_shows_the_door_it_would_have_used","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_document_states_the_number_the_code_holds[docs/02-politeness.md-the retry budget]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","0","test_whitespace_and_odd_unicode_are_cleaned","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the Python version]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"A document that points at a file which has moved is a document nobody can follow.","1","test_every_relative_link_resolves_to_something_in_the_repository[docs/02-politeness.md]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"Which is what a local run produces: `tests/conftest.py` only qualifies keys
+    by job when `GITHUB_JOB` is set, so outside CI every job writes plain keys.","0","test_the_same_key_and_value_in_two_jobs_is_not_a_collision","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_merge","",""
+"The two figures are drawn by the same step but are two files, and a publish
+    can carry one without the other. The page must then show the one it has and say
+    nothing about the one it does not, rather than falling back to the note that
+    claims neither shipped.","4","test_one_diagram_can_arrive_without_the_other[pipeline-architecture]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","4","test_a_source_that_recorded_no_door_says_so_rather_than_guessing_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"It must wait its turn and count against stats, not bypass the client's own politeness.","1","test_the_robots_fetch_is_a_request_like_any_other","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"Not even when the sentence happens to have a number in it.
+
+    The listing pages this project walks say ""In stock"" and nothing more; only a
+    book's own page ever says how many. A column that is a number on one page and
+    null on the other thousand describes nothing, so books carry the flag alone —
+    and the demo store, whose API hands back a real integer, keeps its count.
+    ","0","test_a_book_carries_no_stock_count_at_all","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","1245","test_the_coverage_table_states_the_number_of_cases_pytest_collects[e2e]","tests.unit","Wed Sep 23 09:44:16 UTC 2026","passed","Wed Sep 23 09:44:17 UTC 2026","","test_readme_pins","",""
+"","4","test_the_lede_says_so_when_a_source_did_not_answer","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_figure_states_the_number_the_code_holds[cover.html-one pipeline-sources]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The structured readers only see numbers written the way they expect.
+
+    A count added to a drawing in some other shape — inside a sentence, in a box
+    with no title, in the description a screen reader hears — would be a number
+    nobody checks, and the readers above would never mention it. So every number
+    this module has checked is struck out of the text of each file, longest
+    first, and what is left may not contain a digit.
+    ","0","test_no_number_on_these_files_escapes_this_module[pipeline.svg]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","28","test_prune_keeps_the_newest_snapshots_and_drops_the_rest","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"""All N sources"" is a claim about every source this project scrapes, so it is
+    only true when the run carries all of them. A `run-stats.json` with two of the
+    three and nothing skipped used to be published as ""all 2 sources"", which reads
+    as a complete night and is not one.","4","test_the_lede_does_not_call_a_partial_run_all_the_sources","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"Finding 5: an invalid Source is a TypeError before anything runs, not partway through.","0","test_a_source_missing_a_protocol_member_is_refused_at_the_door","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"","2","test_each_listing_record_carries_the_fields_normalisation_needs","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_books_parser","",""
+"","1184","test_the_coverage_table_states_the_number_of_cases_pytest_collects[the gate]","tests.unit","Wed Sep 23 09:44:18 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"","4","test_the_data_files_are_published_and_linked_with_their_sizes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"Three jobs produce results and all three are merged. A directory that is not
+    there means a job did not deliver, and publishing the rest would show a report —
+    and a figure on the page — missing a whole leg of the suite.","0","test_the_script_stops_when_a_jobs_results_never_arrived","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"`Storage.open()` fails on a scheme SQLAlchemy has no dialect for — `scrape`
+    must report that itself, not let it escape as an unhandled traceback. No network
+    is touched: storage opens before anything reaches `--demo-url` at all.
+    ","4","test_scrape_reports_a_bad_db_url_instead_of_a_traceback","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"A local run must not be able to publish: the push is gated on either running
+    under GitHub Actions or an explicit, named opt-in, not on whether this machine
+    happens to have push credentials.","0","test_the_script_refuses_to_push_outside_ci_by_default","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","0","test_counts_by_marker","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The database is published every night, so its history is bounded on purpose.","7646","test_the_database_keeps_only_the_snapshots_the_caller_asked_for","tests.unit","Wed Sep 23 09:44:53 UTC 2026","passed","Wed Sep 23 09:45:00 UTC 2026","","test_cli","",""
+"","0","test_rating_words_become_integers","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","1","test_attempts_group_by_name_and_parameters_when_there_is_no_history_id","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The guard above must not be a way of always printing the paragraph.","4","test_a_run_with_nothing_skipped_says_nothing_about_skipping","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The skip reason is whichever message the failure carried — somebody else's
+    error text, in practice — and the revision and run URL arrive from CI.","4","test_a_value_cannot_close_an_attribute_and_open_a_script","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"`change-report.json` carries a changeset only for a source that was diffed.
+    ""0 changes"" and ""never compared"" are different statements, and the second one
+    must not be published as the first.","4","test_a_source_with_no_comparison_is_not_reported_as_unchanged","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The two figures are drawn by the same step but are two files, and a publish
+    can carry one without the other. The page must then show the one it has and say
+    nothing about the one it does not, rather than falling back to the note that
+    claims neither shipped.","3","test_one_diagram_can_arrive_without_the_other[architecture-pipeline]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_page_without_the_expected_markup_names_what_is_missing","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_books_parser","",""
+"`hosts` is a dict, and every entry in `run-stats.json` has to read the same way
+    whether the source ran or was skipped before it started — a skipped one is built
+    from numbers alone. The client still keeps the breakdown for its own tests.","0","test_a_source_block_carries_no_per_host_breakdown","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"","3","test_a_missing_trace_leaves_no_link_to_a_file_that_is_not_there","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_a_rerun_is_one_test_not_two","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1154","test_the_coverage_table_states_the_number_of_cases_pytest_collects[parsers]","tests.unit","Wed Sep 23 09:44:14 UTC 2026","passed","Wed Sep 23 09:44:15 UTC 2026","","test_readme_pins","",""
+"","0","test_a_document_states_the_number_the_code_holds[README.md-the book catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","0","test_a_coverage_table_stating_nothing_fails_instead_of_passing_over_an_empty_reading","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"Two snapshots are what a diff is: tonight's, and the one it is compared against.
+
+    Keeping zero would delete the run's own snapshot; keeping one would leave the
+    next run nothing to compare it against. Both turn a change-detection tool into a
+    collector, quietly, one night later — so the retention refuses them by name.
+    ","5","test_prune_refuses_a_retention_that_leaves_nothing_to_diff[1]","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","0","test_identical_snapshots_produce_no_changes","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_diff","",""
+"Every published data file is named by `showcase.build.DATA_FILES`. The script
+    copies the exports directory wholesale and never spells one out — with a single
+    exception, the database, which it renames on the way in and which the next test
+    pins to the builder's own constant.","0","test_the_script_names_no_export_the_page_does_not_link","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"The table is not in the plate: the exporter replaces one comment with it.
+
+    That comment is a fact kept in two files — the template and the exporter —
+    and two copies of one truth drift. The export itself refuses a plate it
+    cannot fill, so this only moves the complaint to the cheapest moment: a test
+    run, rather than the next time somebody tries to refresh the picture.
+    ","1","test_the_plate_still_carries_the_comment_the_exporter_fills_in","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_empty_results_are_an_error_not_a_zero","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_json_carries_counts_and_changes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_report","",""
+"","1","test_it_identifies_itself","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"","0","test_a_figure_states_the_number_the_code_holds[architecture.svg-quotes.toscrape.com/js/-quotes]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","1","test_a_figure_states_the_number_the_code_holds[data-sample.html-shown-rows]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"`run-stats.json` has one shape, whoever wrote the entry.
+
+    `run_sources` writes the numbers for a source it ran; the CLI writes the entry
+    for a source the probe dropped before the run. A key in one and not the other
+    is a hole in the page's table that only shows up on a night something was
+    skipped.
+    ","0","test_a_source_that_never_ran_reads_like_one_that_did","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The cover is an image inside a link; both targets have to be seen, and only those.","0","test_the_link_reader_finds_a_nested_target_and_leaves_the_absolute_ones_alone","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"Off by default: a thousand extra requests to somebody else's site is a decision.","62","test_the_detail_pages_are_not_bought_unless_they_are_asked_for","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"","4","test_a_result_with_no_verdict_is_counted_as_unknown","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","4","test_a_source_that_did_not_move_says_so_rather_than_being_left_out","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","278","test_login_opens_the_members_page","tests.e2e","Wed Sep 23 09:44:42 UTC 2026","passed","Wed Sep 23 09:44:43 UTC 2026","","test_browser_engine","",""
+"","3","test_the_split_by_marker_is_on_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_detail_page_adds_category_and_stock_count","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_books_parser","",""
+"","0","test_a_source_with_no_changes_is_stated_not_omitted","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_report","",""
+"Reading `stats` off a source that never ran must not hand back the client's totals.","1","test_a_source_that_never_fetched_reports_nothing_rather_than_the_whole_run","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"Allure counts the last attempt; a page that disagreed would be wrong.","1","test_the_verdict_is_the_attempt_the_report_shows","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","4","test_a_run_with_no_changes_at_all_states_it","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A picture that changed shape changed what it shows, and nobody chose that.
+
+    The profile crops the three images it shows to sizes it picked, and the two
+    under `showcase/images/` are exported at a fixed size because each is a crop
+    of something taller: a size that drifted is a crop nobody looked at. The
+    banner also carries its size in its own name, so a file that no longer
+    matches it is a file whose name lies.
+    ","0","test_a_committed_image_is_the_size_it_is_shown_at[showcase/images/data-sample.png-size3]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","0","test_a_document_states_the_number_the_code_holds[docs/01-what-it-scrapes-and-why.md-the demo catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"The point of the retention is that it changes nothing a reader can see.","19","test_a_pruned_database_still_diffs_the_two_snapshots_it_kept","tests.integration","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_storage","",""
+"","1182","test_the_first_two_pages_yield_forty_books_politely","tests.live","Wed Sep 23 09:46:40 UTC 2026","passed","Wed Sep 23 09:46:42 UTC 2026","","test_books_live","",""
+"","0","test_a_sentence_this_module_cannot_find_is_a_failure_not_a_silent_pass","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"","1","test_it_does_not_retry_a_4xx","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"","1","test_the_marker_split_counts_a_rerun_once","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The trace is offered twice on purpose: through the hosted viewer, which
+    depends on this site allowing a cross-origin read, and as a file, which depends
+    on nothing. A reader must never be left with only the link that can stop
+    working for a reason outside this project.","3","test_a_trace_that_exists_is_published_and_linked_both_ways","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1334","test_scroll_until_reaches_the_end_and_collects_every_item","tests.e2e","Wed Sep 23 09:44:41 UTC 2026","passed","Wed Sep 23 09:44:42 UTC 2026","","test_browser_engine","",""
+"GitHub Pages runs Jekyll otherwise, and Jekyll drops every directory whose
+    name begins with an underscore — which is most of an Allure report.","0","test_the_published_branch_gets_a_nojekyll_file","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","4","test_results_without_any_live_check_do_not_claim_one","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_the_same_day_gives_the_same_catalogue","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_demo_catalogue","",""
+"`category` is the one field the detail pages add, so it is the one optional field.","1","test_a_book_has_no_category_until_its_own_page_was_read","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","7","test_export_writes_an_empty_cell_for_a_none_field","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","4","test_the_retention_is_stated_on_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"Books: its robots.txt and its one listing page. Demo: its robots.txt and two API pages.","0","test_each_source_reports_only_the_requests_it_made","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"The page reads every source's entry the same way, so every entry has one shape.
+
+    A source that ran and one that never started are written by different code paths —
+    the first from what the source counted, the second from zeroes — and the published
+    page walks both. A key present in one and missing from the other is a page that
+    reads a number off one source and nothing off the next; a key of a different
+    *kind* (`hosts` used to arrive as a dict) is worse, because it survives into the
+    published JSON and the table quietly stops lining up.
+    ","12","test_a_collected_entry_has_the_same_keys_as_a_skipped_one","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"Finding 3: one unparsable record out of three still yields a snapshot of two.","12","test_one_bad_record_is_isolated_the_source_is_not_skipped","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"Same refusal, different fact: there is no robots.txt here, only a silent host.","1","test_a_host_that_never_answered_refuses_and_says_it_did_not_answer","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"The pin bites: the reader reads the digits in the file, not a constant.","1","test_a_number_changed_in_the_readme_is_one_this_module_would_catch","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"gh-pages is a publication, not a history: the force-push of the orphan branch
+    is what makes every run replace it completely.","1","test_the_script_replaces_the_published_history_rather_than_nesting_in_it","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","1","test_a_document_states_the_number_the_code_holds[README.md-the catalogue's pages]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"No leg of this pipeline selects an unmarked test — `-m ""unit or parsers or
+    integration""`, `-m e2e` and `-m live` between them cover the whole suite — so it
+    would stop running with nothing failing anywhere.","1","test_a_test_that_lost_its_marker_stops_the_build","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","0","test_a_changed_field_is_reported_with_before_and_after","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_diff","",""
+"","1","test_a_document_states_the_number_the_code_holds[docs/02-politeness.md-the wait between two requests]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"Exporting on the probe's word rather than the run's would publish yesterday's
+    snapshot of a source that answered but yielded nothing, under tonight's date,
+    while the page said that source was not collected.
+    ","2555","test_export_dir_writes_the_sources_the_run_actually_collected","tests.unit","Wed Sep 23 09:44:50 UTC 2026","passed","Wed Sep 23 09:44:53 UTC 2026","","test_cli","",""
+"It sits in the repository root while the site is assembled; leaving it behind
+    would put untracked build output in a developer's checkout.","0","test_the_staging_directory_is_cleaned_up","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","3","test_no_placeholder_survives_the_build","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","4","test_scrape_names_the_sources_it_knows","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"A snapshot's rows are most of the file; leaving them behind would keep the
+    database growing while the page said the history was bounded.","18","test_prune_takes_the_records_of_a_dropped_snapshot_with_it","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"`stock=None` means ""the page didn't say"" — the database must not turn that into 0.","6","test_an_unknown_stock_count_round_trips_as_none_not_zero","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","0","test_a_document_states_the_number_the_code_holds[README.md-the number of sources]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"And the path is reachable: the flag is what turns `with_details` on.","40","test_books_details_reaches_the_source_when_it_is_asked_for","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_cli","",""
+"Finding 1: and through a nested dict, alongside an ordinary string in the same dict.","6","test_a_decimal_inside_a_nested_dict_round_trips_through_the_database","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","0","test_a_document_states_the_number_the_code_holds[README.md-a full run's records]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","0","test_a_document_states_the_number_the_code_holds[docs/01-what-it-scrapes-and-why.md-the width of a quote's identifier]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"`showcase/build.py` publishes `scroll.webm` and `scroll-trace.zip` by name and
+    applies the size floor that decides a truncated file is not a video. A second
+    rule here could not be kept in step with that one.","0","test_the_script_has_no_media_glob_or_file_name_of_its_own","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","0","test_a_blank_book_title_is_rejected","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_normalize","",""
+"","5","test_a_skipped_check_is_counted_and_said_on_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1209","test_the_coverage_table_states_the_number_of_cases_pytest_collects[live]","tests.unit","Wed Sep 23 09:44:17 UTC 2026","passed","Wed Sep 23 09:44:18 UTC 2026","","test_readme_pins","",""
+"","0","test_a_document_states_the_number_the_code_holds[docs/01-what-it-scrapes-and-why.md-the quotes catalogue]","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_readme_pins","",""
+"","1","test_fetched_at_is_not_a_change","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_diff","",""
+"","0","test_the_script_stages_the_data_and_hands_the_staging_directory_over","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","2","test_a_listing_page_yields_twenty_books_and_the_next_page","tests.parsers","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_books_parser","",""
+"The bug this pins was additive: the second block carried the first's totals too.","0","test_the_second_source_does_not_inherit_the_first_ones_bytes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_source_stats","",""
+"","1","test_a_figure_spells_a_setting_the_way_the_project_spells_it[pipeline.svg-the browser marker]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"The sentence written for a plural reads as nonsense over a 1 — ""1 of the 1
+    checks did not run"" — and a publication whose only live check was skipped is
+    exactly the night a reader needs told plainly.","4","test_the_one_live_check_that_did_not_run_is_said_in_the_singular","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A page that holds a number and never states it is a number nobody checked.","4","test_the_suite_figures_are_on_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_a_run_with_no_sources_is_an_error_not_a_page_of_zeroes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","1","test_a_missing_robots_txt_allows_everything","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_http_client","",""
+"","7","test_prune_with_nothing_to_drop_changes_nothing","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_storage","",""
+"","4","test_a_skipped_source_is_named_with_the_reason_the_run_recorded","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"","4","test_a_clean_run_says_nothing_about_flakes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A mistyped name in the template is a visible `{{RECORD}}` on a published
+    page — the kind of thing nobody notices until somebody else does.","0","test_a_placeholder_the_build_does_not_produce_stops_the_build","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A document that points at a file which has moved is a document nobody can follow.","0","test_every_relative_link_resolves_to_something_in_the_repository[docs/01-what-it-scrapes-and-why.md]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_readme_pins","",""
+"","3","test_a_missing_recording_is_said_in_words_not_shown_as_a_black_box","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"Finding 3's other half: ""skipped"" is reserved for nothing usable at all.","6","test_a_source_whose_every_record_fails_to_parse_is_skipped","tests.integration","Wed Sep 23 09:44:11 UTC 2026","passed","Wed Sep 23 09:44:11 UTC 2026","","test_run","",""
+"","1","test_a_figure_states_the_number_the_code_holds[pipeline.svg-the database, carried from one night to the next-nights per source]","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","3","test_a_recording_that_exists_is_published_beside_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"The script does rename the database, because the local path is a setting and
+    the published name is a contract: `scripts/restore-db.sh` reads it back by that
+    name and the page links it by that name. Pinned here so the two cannot drift.","0","test_the_database_is_staged_under_the_name_the_page_publishes","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""
+"","0","test_every_source_that_ran_collected_its_whole_catalogue","tests.live","Wed Sep 23 09:46:42 UTC 2026","passed","Wed Sep 23 09:46:42 UTC 2026","","test_full_run_sizes","",""
+"","4","test_diagrams_that_exist_are_published_beside_the_page","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"`showcase.build` keeps its own copy of the names, to stay free of the package.
+
+    The lede counts on it: ""all N sources this project scrapes"" is a claim about
+    every source there is, and it is drawn from that copy.
+    ","0","test_the_page_names_every_source_the_project_scrapes","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"","4","test_parse_errors_are_stated_rather_than_folded_into_the_totals","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A dead origin has refused nothing — there is no robots.txt to have been refused by.","1","test_a_host_that_never_answered_says_so_instead_of_blaming_robots_txt","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_fetch_refusal","",""
+"The page tells a reader how much history the published database holds. The
+    number that actually holds it is the CLI's `--keep-snapshots` default, and the
+    page's copy is a constant in the builder — pinned here, because a page that
+    promises thirty nights of a file that keeps seven is a lie nothing else
+    catches.","0","test_the_page_states_the_retention_the_cli_applies","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_build","",""
+"A number nobody can look up is a number this module cannot check.","0","test_a_cover_count_with_no_label_is_a_failure_rather_than_a_silent_skip","tests.unit","Wed Sep 23 09:44:20 UTC 2026","passed","Wed Sep 23 09:44:20 UTC 2026","","test_showcase_figures","",""
+"`showcase/merge.py` is what `tests/unit/test_showcase_merge.py` exercises; the
+    script has to be the one calling it, or that coverage says nothing about what
+    ships.","0","test_the_script_merges_every_jobs_results_through_the_tested_module","tests.unit","Wed Sep 23 09:44:12 UTC 2026","passed","Wed Sep 23 09:44:12 UTC 2026","","test_publish_showcase_script","",""

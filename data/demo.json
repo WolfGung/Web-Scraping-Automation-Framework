@@ -1,0 +1,362 @@
+[
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Aurora Desk Lamp",
+    "price": "24.99",
+    "stock": 14,
+    "external_id": "1",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Juniper Hand Soap",
+    "price": "5.99",
+    "stock": 30,
+    "external_id": "10",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Kestrel Binoculars",
+    "price": "89.99",
+    "stock": 3,
+    "external_id": "11",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Lagoon Beach Towel",
+    "price": "15.65",
+    "stock": 20,
+    "external_id": "12",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Meadow Throw Pillow",
+    "price": "22.99",
+    "stock": 16,
+    "external_id": "13",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Nimbus Rain Jacket",
+    "price": "74.99",
+    "stock": 8,
+    "external_id": "14",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Onyx Desk Organizer",
+    "price": "19.99",
+    "stock": 25,
+    "external_id": "15",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Pinecone Air Freshener",
+    "price": "4.99",
+    "stock": 29,
+    "external_id": "16",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Quartz Bookmark Set",
+    "price": "8.99",
+    "stock": 0,
+    "external_id": "17",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Redwood Picture Frame",
+    "price": "16.99",
+    "stock": 12,
+    "external_id": "18",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Sable Leather Wallet",
+    "price": "44.99",
+    "stock": 7,
+    "external_id": "19",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Basalt Coffee Mug",
+    "price": "8.99",
+    "stock": 27,
+    "external_id": "2",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Tundra Sleeping Bag",
+    "price": "89.99",
+    "stock": 4,
+    "external_id": "20",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Umber Ceramic Bowl",
+    "price": "14.99",
+    "stock": 19,
+    "external_id": "21",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Violet Garden Trowel",
+    "price": "9.99",
+    "stock": 15,
+    "external_id": "22",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Willow Wind Chime",
+    "price": "20.99",
+    "stock": 10,
+    "external_id": "23",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Xenon Bike Light",
+    "price": "20.89",
+    "stock": 0,
+    "external_id": "24",
+    "url": "http://127.0.0.1:8765/?page=2"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Yarrow Herbal Tea Tin",
+    "price": "7.99",
+    "stock": 26,
+    "external_id": "25",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Zinc Watering Can",
+    "price": "15.99",
+    "stock": 13,
+    "external_id": "26",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Alder Cutting Knife",
+    "price": "29.99",
+    "stock": 6,
+    "external_id": "27",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Birch Serving Tray",
+    "price": "23.99",
+    "stock": 17,
+    "external_id": "28",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Cedar Soap Dish",
+    "price": "6.99",
+    "stock": 28,
+    "external_id": "29",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Cobalt Backpack",
+    "price": "54.99",
+    "stock": 9,
+    "external_id": "3",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Delta Camping Stove",
+    "price": "59.99",
+    "stock": 2,
+    "external_id": "30",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Ember Trail Mix Jar",
+    "price": "6.20",
+    "stock": 24,
+    "external_id": "31",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Frost Insulated Bottle",
+    "price": "24.99",
+    "stock": 21,
+    "external_id": "32",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Glacier Ice Scraper",
+    "price": "3.49",
+    "stock": 30,
+    "external_id": "33",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Heron Feather Pen",
+    "price": "12.99",
+    "stock": 0,
+    "external_id": "34",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Indigo Notebook",
+    "price": "9.99",
+    "stock": 23,
+    "external_id": "35",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Jasper Stone Coaster Set",
+    "price": "17.99",
+    "stock": 14,
+    "external_id": "36",
+    "url": "http://127.0.0.1:8765/?page=3"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Kelp Sea Salt Grinder",
+    "price": "11.99",
+    "stock": 9,
+    "external_id": "37",
+    "url": "http://127.0.0.1:8765/?page=4"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Lantern Solar Charger",
+    "price": "39.99",
+    "stock": 5,
+    "external_id": "38",
+    "url": "http://127.0.0.1:8765/?page=4"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Marble Rolling Pin",
+    "price": "20.45",
+    "stock": 0,
+    "external_id": "39",
+    "url": "http://127.0.0.1:8765/?page=4"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Driftwood Cutting Board",
+    "price": "20.89",
+    "stock": 0,
+    "external_id": "4",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Nectar Honey Dipper",
+    "price": "4.49",
+    "stock": 27,
+    "external_id": "40",
+    "url": "http://127.0.0.1:8765/?page=4"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Ember Candle Trio",
+    "price": "12.99",
+    "stock": 22,
+    "external_id": "5",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Fjord Wool Blanket",
+    "price": "69.99",
+    "stock": 5,
+    "external_id": "6",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Granite Bookend Pair",
+    "price": "20.23",
+    "stock": 0,
+    "external_id": "7",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": false,
+    "name": "Harbor Umbrella",
+    "price": "34.99",
+    "stock": 0,
+    "external_id": "8",
+    "url": "http://127.0.0.1:8765/?page=1"
+  },
+  {
+    "currency": "USD",
+    "in_stock": true,
+    "name": "Ivory Ceramic Vase",
+    "price": "27.99",
+    "stock": 11,
+    "external_id": "9",
+    "url": "http://127.0.0.1:8765/?page=1"
+  }
+]

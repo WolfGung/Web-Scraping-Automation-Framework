@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1016" width="900" height="1016"
+     role="img" aria-labelledby="arch-title arch-desc"
+     font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <title id="arch-title">How ScrapeWatch is put together</title>
+  <desc id="arch-desc">Four bands, read downwards. Top band, the three doors and the site each one reaches: the polite HTTP client in src/scrapewatch/http.py, which honours robots.txt and keeps a minimum interval per host, reaches books.toscrape.com and its 1000 books over 50 catalogue pages; the browser session in src/scrapewatch/browser.py, which drives Chromium through Playwright and can render, scroll and log in, reaches the 100 quotes of quotes.toscrape.com, a page that is empty until its script has run; and the demo store that ships inside this repository, a FastAPI application with a JSON API and an infinite scroll, holds 40 products whose prices and stock move every day. All three yield the same kind of raw record into one pipeline. Second band, that pipeline, src/scrapewatch/pipeline/run.py in five steps: validate against the typed model, normalise into comparable fields, snapshot into storage, diff against the previous snapshot of the same source, and report what moved. Third band, storage: SQLAlchemy over SQLite by default, in data/scrapewatch.sqlite3, or PostgreSQL through the compose profile — the database URL is the only difference. The snapshot step writes there and the diff step reads the previous snapshot back out. Bottom band, what a night leaves behind: the data exports, the change report as JSON and HTML, the Allure report of the run, and the published page built by showcase/build.py.</desc>
+
+  <!-- The figure is referenced through <img>, so it cannot inherit a colour
+       from the host page: it carries its own light plate and dark ink, and
+       reads the same in a light and a dark theme. -->
+  <style>
+    .plate { fill: #ffffff; }
+    .zone  { fill: #f3f2ef; }
+    .box   { fill: #ffffff; stroke: #222a32; stroke-width: 1.6; }
+    .foreign { fill: #f3f2ef; stroke: #6b7885; stroke-width: 1.6; stroke-dasharray: 8 5; }
+    .emph  { fill: #e9eef4; stroke: #12161b; stroke-width: 2.6; }
+    .lab   { fill: #47525d; font-size: 12px; font-weight: 600; letter-spacing: .09em;
+             paint-order: stroke; stroke: #f3f2ef; stroke-width: 5px; stroke-linejoin: round; }
+    .h     { fill: #12161b; font-size: 17px; font-weight: 650; }
+    .sub   { fill: #47525d; font-size: 12.5px; }
+    .t     { fill: #12161b; font-size: 15px; font-weight: 650; }
+    .t2    { fill: #12161b; font-size: 13.5px; font-weight: 650; }
+    .b     { fill: #12161b; font-size: 13px; }
+    .m     { fill: #47525d; font-size: 12.5px; }
+    .on-line { fill: #47525d; font-size: 12.5px;
+               paint-order: stroke; stroke: #ffffff; stroke-width: 6px; stroke-linejoin: round; }
+    .arrow { stroke: #222a32; stroke-width: 1.8; fill: none; marker-end: url(#head); }
+    .link  { stroke: #222a32; stroke-width: 1.8; fill: none; }
+    .dash  { stroke: #47525d; stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; marker-end: url(#head-m); }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0.5 L9,5 L0,9.5 z" fill="#222a32"/>
+    </marker>
+    <marker id="head-m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0.5 L9,5 L0,9.5 z" fill="#47525d"/>
+    </marker>
+  </defs>
+
+  <rect class="plate" x="0" y="0" width="900" height="1016"/>
+
+  <text class="h"   x="24" y="32">How ScrapeWatch is put together</text>
+  <text class="sub" x="24" y="54">Three doors into three catalogues, one pipeline behind all of them, and everything a night leaves behind.</text>
+
+  <!-- ================= band 1: the doors, and what each reaches ================= -->
+  <rect class="zone" x="24" y="78" width="852" height="340" rx="10"/>
+
+  <rect class="box" x="40" y="112" width="268" height="134" rx="8"/>
+  <text class="t"  x="174" y="140" text-anchor="middle">src/scrapewatch/http.py</text>
+  <text class="t2" x="174" y="162" text-anchor="middle">PoliteClient</text>
+  <text class="m"  x="174" y="186" text-anchor="middle">robots.txt asked first, and honoured</text>
+  <text class="m"  x="174" y="206" text-anchor="middle">a minimum interval per host</text>
+  <text class="m"  x="174" y="226" text-anchor="middle">retries with backoff, and an honest</text>
+  <text class="m"  x="174" y="240" text-anchor="middle">User-Agent naming the repository</text>
+
+  <rect class="box" x="316" y="112" width="268" height="134" rx="8"/>
+  <text class="t"  x="450" y="140" text-anchor="middle">src/scrapewatch/browser.py</text>
+  <text class="t2" x="450" y="162" text-anchor="middle">BrowserSession</text>
+  <text class="m"  x="450" y="186" text-anchor="middle">Chromium, driven by Playwright</text>
+  <text class="m"  x="450" y="206" text-anchor="middle">render · scroll · login, one page</text>
+  <text class="m"  x="450" y="226" text-anchor="middle">video and trace when the night</text>
+  <text class="m"  x="450" y="240" text-anchor="middle">asks for them; off by default</text>
+
+  <rect class="box" x="592" y="112" width="268" height="134" rx="8"/>
+  <text class="t"  x="726" y="140" text-anchor="middle">src/scrapewatch/demo_store/</text>
+  <text class="t2" x="726" y="162" text-anchor="middle">FastAPI, in this repository</text>
+  <text class="m"  x="726" y="186" text-anchor="middle">a JSON API and a page that loads</text>
+  <text class="m"  x="726" y="206" text-anchor="middle">more of itself as you scroll</text>
+  <text class="m"  x="726" y="226" text-anchor="middle">nothing reaches it but this project,</text>
+  <text class="m"  x="726" y="240" text-anchor="middle">which is why it can be made to move</text>
+
+  <path class="arrow" d="M174,246 L174,268"/>
+  <path class="arrow" d="M450,246 L450,268"/>
+  <path class="arrow" d="M726,246 L726,268"/>
+
+  <rect class="box foreign" x="40" y="272" width="268" height="124" rx="8"/>
+  <text class="t" x="174" y="300" text-anchor="middle">books.toscrape.com</text>
+  <text class="b" x="174" y="324" text-anchor="middle">1000 books</text>
+  <text class="b" x="174" y="346" text-anchor="middle">50 catalogue pages</text>
+  <text class="m" x="174" y="370" text-anchor="middle">static HTML: no browser needed</text>
+  <text class="m" x="174" y="388" text-anchor="middle">title · price · in stock · rating</text>
+
+  <rect class="box foreign" x="316" y="272" width="268" height="124" rx="8"/>
+  <text class="t" x="450" y="300" text-anchor="middle">quotes.toscrape.com/js/</text>
+  <text class="b" x="450" y="324" text-anchor="middle">100 quotes</text>
+  <text class="m" x="450" y="348" text-anchor="middle">the page is empty until its own</text>
+  <text class="m" x="450" y="366" text-anchor="middle">script has run — the one place</text>
+  <text class="m" x="450" y="384" text-anchor="middle">a browser is the only answer</text>
+
+  <rect class="box" x="592" y="272" width="268" height="124" rx="8"/>
+  <text class="t" x="726" y="300" text-anchor="middle">the demo store</text>
+  <text class="b" x="726" y="324" text-anchor="middle">40 products</text>
+  <text class="m" x="726" y="348" text-anchor="middle">prices and stock move every day,</text>
+  <text class="m" x="726" y="366" text-anchor="middle">so the change report always has</text>
+  <text class="m" x="726" y="384" text-anchor="middle">something real to show</text>
+
+  <path class="link"  d="M174,396 L174,430"/>
+  <path class="link"  d="M450,396 L450,430"/>
+  <path class="link"  d="M726,396 L726,430"/>
+  <path class="link"  d="M114,430 L726,430"/>
+  <path class="arrow" d="M114,430 L114,478"/>
+  <text class="on-line" x="200" y="425">every door yields the same RawRecord; nothing after this line knows which site it came from</text>
+
+  <!-- ================= band 2: one pipeline ================= -->
+  <rect class="zone" x="24" y="448" width="852" height="170" rx="10"/>
+
+  <rect class="box emph" x="40" y="482" width="148" height="118" rx="8"/>
+  <text class="t2" x="114" y="510" text-anchor="middle">validate</text>
+  <text class="m"  x="114" y="534" text-anchor="middle">models.py</text>
+  <text class="m"  x="114" y="556" text-anchor="middle">a record that does</text>
+  <text class="m"  x="114" y="574" text-anchor="middle">not parse is named,</text>
+  <text class="m"  x="114" y="592" text-anchor="middle">not silently dropped</text>
+
+  <rect class="box emph" x="208" y="482" width="148" height="118" rx="8"/>
+  <text class="t2" x="282" y="510" text-anchor="middle">normalise</text>
+  <text class="m"  x="282" y="534" text-anchor="middle">pipeline/normalize.py</text>
+  <text class="m"  x="282" y="556" text-anchor="middle">prices to numbers,</text>
+  <text class="m"  x="282" y="574" text-anchor="middle">stock to a flag, text</text>
+  <text class="m"  x="282" y="592" text-anchor="middle">to comparable text</text>
+
+  <rect class="box emph" x="376" y="482" width="148" height="118" rx="8"/>
+  <text class="t2" x="450" y="510" text-anchor="middle">snapshot</text>
+  <text class="m"  x="450" y="534" text-anchor="middle">storage.py</text>
+  <text class="m"  x="450" y="556" text-anchor="middle">one run, one</text>
+  <text class="m"  x="450" y="574" text-anchor="middle">snapshot per source,</text>
+  <text class="m"  x="450" y="592" text-anchor="middle">kept for the next one</text>
+
+  <rect class="box emph" x="544" y="482" width="148" height="118" rx="8"/>
+  <text class="t2" x="618" y="510" text-anchor="middle">diff</text>
+  <text class="m"  x="618" y="534" text-anchor="middle">pipeline/diff.py</text>
+  <text class="m"  x="618" y="556" text-anchor="middle">added · removed ·</text>
+  <text class="m"  x="618" y="574" text-anchor="middle">changed, field by</text>
+  <text class="m"  x="618" y="592" text-anchor="middle">field, keyed by id</text>
+
+  <rect class="box emph" x="712" y="482" width="148" height="118" rx="8"/>
+  <text class="t2" x="786" y="510" text-anchor="middle">report</text>
+  <text class="m"  x="786" y="534" text-anchor="middle">pipeline/report.py</text>
+  <text class="m"  x="786" y="556" text-anchor="middle">what moved, as</text>
+  <text class="m"  x="786" y="574" text-anchor="middle">JSON for machines</text>
+  <text class="m"  x="786" y="592" text-anchor="middle">and HTML for people</text>
+
+  <path class="arrow" d="M188,541 L204,541"/>
+  <path class="arrow" d="M356,541 L372,541"/>
+  <path class="arrow" d="M524,541 L540,541"/>
+  <path class="arrow" d="M692,541 L708,541"/>
+
+  <!-- ================= band 3: where it is kept ================= -->
+  <rect class="zone" x="24" y="648" width="852" height="150" rx="10"/>
+
+  <path class="arrow" d="M414,600 L414,678"/>
+  <path class="dash"  d="M560,678 L560,604"/>
+  <text class="on-line" x="576" y="644">the previous snapshot, to diff against</text>
+
+  <rect class="box" x="40" y="682" width="404" height="96" rx="8"/>
+  <text class="t"  x="242" y="710" text-anchor="middle">SQLite by default</text>
+  <text class="b"  x="242" y="734" text-anchor="middle">data/scrapewatch.sqlite3</text>
+  <text class="m"  x="242" y="758" text-anchor="middle">published with the page, so tonight has a yesterday</text>
+
+  <rect class="box" x="472" y="682" width="404" height="96" rx="8"/>
+  <text class="t"  x="674" y="710" text-anchor="middle">PostgreSQL as a profile</text>
+  <text class="b"  x="674" y="734" text-anchor="middle">docker compose --profile postgres</text>
+  <text class="m"  x="674" y="758" text-anchor="middle">same SQLAlchemy models; the URL is the only difference</text>
+
+  <!-- ================= band 4: what a night leaves behind ================= -->
+  <rect class="zone" x="24" y="828" width="852" height="168" rx="10"/>
+
+  <!-- Drawn after the band's own fill, so the connector crossing it is not
+       painted over by it. -->
+  <path class="arrow" d="M450,798 L450,858"/>
+  <text class="on-line" x="466" y="822">exported, reported, published</text>
+
+  <rect class="box" x="40" y="862" width="196" height="116" rx="8"/>
+  <text class="t2" x="138" y="890" text-anchor="middle">the data</text>
+  <text class="m"  x="138" y="914" text-anchor="middle">books.csv · books.json</text>
+  <text class="m"  x="138" y="932" text-anchor="middle">quotes.json · demo.json</text>
+  <text class="m"  x="138" y="956" text-anchor="middle">what was collected,</text>
+  <text class="m"  x="138" y="970" text-anchor="middle">not a description of it</text>
+
+  <rect class="box" x="248" y="862" width="196" height="116" rx="8"/>
+  <text class="t2" x="346" y="890" text-anchor="middle">the change report</text>
+  <text class="m"  x="346" y="914" text-anchor="middle">change-report.json</text>
+  <text class="m"  x="346" y="932" text-anchor="middle">change-report.html</text>
+  <text class="m"  x="346" y="956" text-anchor="middle">what moved since the</text>
+  <text class="m"  x="346" y="970" text-anchor="middle">night before, per source</text>
+
+  <rect class="box" x="456" y="862" width="196" height="116" rx="8"/>
+  <text class="t2" x="554" y="890" text-anchor="middle">the Allure report</text>
+  <text class="m"  x="554" y="914" text-anchor="middle">every check of the run,</text>
+  <text class="m"  x="554" y="932" text-anchor="middle">with its history</text>
+  <text class="m"  x="554" y="956" text-anchor="middle">a red live check is</text>
+  <text class="m"  x="554" y="970" text-anchor="middle">drift, and stays visible</text>
+
+  <rect class="box" x="664" y="862" width="196" height="116" rx="8"/>
+  <text class="t2" x="762" y="890" text-anchor="middle">the published page</text>
+  <text class="m"  x="762" y="914" text-anchor="middle">showcase/build.py</text>
+  <text class="m"  x="762" y="932" text-anchor="middle">every figure read out</text>
+  <text class="m"  x="762" y="956" text-anchor="middle">of the run it describes,</text>
+  <text class="m"  x="762" y="970" text-anchor="middle">none of them typed</text>
+
+  <!-- Painted last, over a knockout of the band's own fill: a connector that
+       crosses a word passes behind it rather than through it. -->
+  <text class="lab" x="40" y="100">THE DOORS — AND THE CATALOGUE EACH ONE REACHES. A DASHED EDGE IS SOMEBODY ELSE’S SITE</text>
+  <text class="lab" x="40" y="470">ONE PIPELINE — src/scrapewatch/pipeline/run.py, THE SAME STEPS FOR EVERY SOURCE</text>
+  <text class="lab" x="40" y="670">STORAGE — src/scrapewatch/storage.py</text>
+  <text class="lab" x="40" y="850">WHAT A NIGHT LEAVES BEHIND</text>
+</svg>

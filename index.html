@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScrapeWatch — Web Scraping Automation Framework</title>
+<meta name="description" content="A polite multi-source scraper that publishes what it collected: the records, the changes since the previous night, the recording of a browser walking an infinite scroll, and the test report from the same run.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --ink: #1b1f24;
+    --muted: #5a6470;
+    --line: #dcdcd8;
+    --accent: #1c5d99;
+    --on-accent: #ffffff;
+    --mark: #f2efe9;
+    /* The diagrams are referenced with <img>, so the currentColor inside them
+       resolves against the SVG itself, not against this page: they are drawn
+       dark whatever the theme. They therefore sit on a plate that stays light
+       in both themes rather than on a panel that turns dark under them. */
+    --plate: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216;
+      --panel: #161b22;
+      --ink: #e6edf3;
+      --muted: #9aa7b4;
+      --line: #2a323c;
+      --accent: #8ab4f8;
+      --on-accent: #0f1216;
+      --mark: #1b2129;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow-wrap: break-word;
+  }
+
+  /* One container width for every section, so headings share a left edge on a
+     wide screen; the reading column is held separately at about 70 characters. */
+  .wrap, .wide { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+  .wrap h1, .wrap h2, .wrap h3, .wrap p, .wrap ul:not(.stats), .wrap .aside,
+  .wide h2, .wide p, figcaption { max-width: 68ch; }
+
+  h1, h2, h3 { line-height: 1.25; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.6rem); margin: 0 0 .5rem; }
+  h2 { font-size: clamp(1.25rem, 1.05rem + 1vw, 1.6rem); margin: 0 0 .75rem; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .35rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .92em;
+    background: var(--mark);
+    padding: .1em .35em;
+    border-radius: 4px;
+  }
+
+  header.top { padding: 3rem 0 1.5rem; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--muted); margin: 0 0 .75rem;
+  }
+  .lede { font-size: 1.1rem; }
+  .stack { color: var(--muted); font-size: .95rem; }
+
+  .links { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
+  .btn {
+    display: inline-block; padding: .6rem 1rem; border-radius: 8px;
+    border: 1px solid var(--line); text-decoration: none; color: var(--ink);
+    background: var(--panel); font-weight: 600; font-size: .95rem;
+  }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .btn:hover { border-color: var(--accent); }
+  .btn:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  section { padding: 2.5rem 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+
+  .stats {
+    list-style: none; margin: 0 0 1.25rem; padding: 0;
+    display: grid; gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+  .stats li {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: .9rem 1rem;
+  }
+  .stats b {
+    display: block; font-size: 2rem; line-height: 1.1;
+    font-variant-numeric: tabular-nums; font-weight: 650;
+  }
+  .stats span { display: block; color: var(--muted); font-size: .88rem; margin-top: .2rem; }
+  .meta { color: var(--muted); font-size: .95rem; }
+
+  .table-scroll { overflow-x: auto; margin: 0 0 1.25rem; }
+  table {
+    border-collapse: collapse; width: 100%;
+    background: var(--panel); font-size: .95rem;
+  }
+  caption { text-align: left; color: var(--muted); font-size: .9rem; padding-bottom: .5rem; }
+  th, td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: right; }
+  thead th, tbody th { text-align: left; }
+  td { font-variant-numeric: tabular-nums; }
+
+  figure { margin: 0 0 1.5rem; }
+  /* Each figure is a link to the SVG itself, so a reader on a phone can open
+     it at full size and read the labels. Block, or the anchor would sit on a
+     text baseline and leave a gap under the drawing. */
+  figure a { display: block; }
+  figcaption { color: var(--muted); font-size: .9rem; margin-top: .5rem; }
+  img, video { display: block; max-width: 100%; height: auto; }
+  video {
+    width: 100%; background: var(--mark);
+    border: 1px solid var(--line); border-radius: 10px;
+  }
+  figure img {
+    width: 100%; background: var(--plate);
+    border: 1px solid var(--line); border-radius: 10px; padding: .75rem;
+  }
+
+  .flag { border-left: 3px solid var(--accent); padding-left: .9rem; }
+  .note {
+    color: var(--muted); font-size: .95rem;
+    border-left: 3px solid var(--line); padding-left: .9rem;
+  }
+
+  .aside {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1.25rem 1.25rem .5rem; margin-top: 1.5rem;
+  }
+  .aside h3 { margin-top: 0; }
+  .aside ul { margin: 0 0 1rem; padding-left: 1.1rem; }
+  .aside li { margin-bottom: .5rem; }
+
+  .closing { text-align: left; padding-bottom: 3rem; }
+  footer { color: var(--muted); font-size: .9rem; padding: 2rem 0 3rem; }
+  footer p { margin-bottom: .5rem; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Web scraping · portfolio project</p>
+    <h1>A scraper that publishes what it collected</h1>
+    <p class="lede">
+      1140 records in one night, collected from
+      all 3 sources this project scrapes:
+      a static book catalogue over plain HTTP, a page that only exists once
+      JavaScript has run, and a demo store that ships inside this repository and
+      moves its own prices every day. Each run is compared against the last one, so
+      this page can say what changed and not only that something ran. Every figure
+      on it is read out of that run when the page is generated.
+    </p>
+    <p class="stack">Python · httpx · selectolax · Playwright · pydantic · SQLAlchemy · FastAPI · pytest · Allure · Docker · GitHub Actions</p>
+    <nav class="links" aria-label="Project">
+      <a class="btn primary" href="#data">Take the data</a>
+      <a class="btn" href="changes.html">See what changed</a>
+      <a class="btn" href="report/">Open the test report</a>
+      <a class="btn" href="https://github.com/WolfGung/Web-Scraping-Automation-Framework">Read the code</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section id="collection" aria-labelledby="collection-h">
+  <div class="wide">
+    <h2 id="collection-h">What this run collected</h2>
+    <ul class="stats">
+      <li><b>1140</b><span>records collected</span></li>
+      <li><b>64</b><span>pages fetched</span></li>
+      <li><b>58</b><span>requests made</span></li>
+      <li><b>20</b><span>changes detected</span></li>
+    </ul>
+    <div class="table-scroll">
+      <table>
+        <caption>Per source, as the run recorded it: the door it went through, pages walked, requests made, seconds spent, and changes against the previous snapshot.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Source</th>
+            <th scope="col">Door</th>
+            <th scope="col">Records</th>
+            <th scope="col">Pages</th>
+            <th scope="col">Requests</th>
+            <th scope="col">Time</th>
+            <th scope="col">Changes</th>
+          </tr>
+        </thead>
+        <tbody>
+<tr><th scope="row">books.toscrape.com</th><td>http</td><td>1000</td><td>50</td><td>51</td><td>5.6 s</td><td>0</td></tr>
+<tr><th scope="row">quotes.toscrape.com</th><td>browser</td><td>100</td><td>10</td><td>1</td><td>3.0 s</td><td>0</td></tr>
+<tr><th scope="row">the demo store</th><td>local</td><td>40</td><td>4</td><td>6</td><td>0.01 s</td><td>20</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      That is 8.5 seconds of fetching in all. The requests are counted by
+      the HTTP client itself, which is also what keeps at least half a second
+      between two requests to the same host, so the figure is the traffic this
+      project actually caused — each source's own share of it, not the run's
+      total repeated on every row. A browser page load is not one of them: the
+      source that goes through the browser door counts its rendered pages and
+      times them itself, because the HTTP client never sees them.
+
+
+    </p>
+
+    <h3 id="data">The data itself</h3>
+    <p>
+      Not a screenshot of a table: the files this run wrote, exported from the
+      database straight after the scrape.
+    </p>
+    <ul>
+<li><a href="data/books.csv">books.csv</a> — every book collected in this run, one row per book (186 KB).</li>
+<li><a href="data/books.json">books.json</a> — the same books as JSON (309 KB).</li>
+<li><a href="data/quotes.json">quotes.json</a> — every quote collected in this run (32 KB).</li>
+<li><a href="data/demo.json">demo.json</a> — the demo store&#x27;s catalogue as it stood during this run (8 KB).</li>
+<li><a href="data/scrapewatch.sqlite3">scrapewatch.sqlite3</a> — the database itself: every snapshot this project has taken, which is what this run&#x27;s diff was made against and what the next run will compare with (1.6 MB).</li>
+    </ul>
+    <p class="note">
+      The database in that list is published on purpose. It is the same SQLite file
+      the next run pulls back before it starts, which is the only reason a nightly
+      diff has a yesterday to compare against; and it means anyone can open the
+      history with <code>sqlite3</code> instead of taking this page's word for it.
+      It keeps the last 30 nights per source and drops what is older —
+      a published file that grows for ever is a download nobody makes.
+    </p>
+    <p class="meta">
+      Collected 23 September 2026, 09:46 UTC.
+      <a href="https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/runs/35844642718">The pipeline run</a> that produced this page is public.
+    </p>
+  </div>
+</section>
+
+<section id="changes" aria-labelledby="changes-h">
+  <div class="wrap">
+    <h2 id="changes-h">What moved since the previous run</h2>
+    <p>
+      20 changes in all. Every one of them is a field that differs between
+      the last two snapshots of the same record, matched by the identifier the site
+      itself gives it, not by position in a list:
+    </p>
+    <ul>
+<li>books.toscrape.com: nothing moved since the previous snapshot.</li>
+<li>quotes.toscrape.com: nothing moved since the previous snapshot.</li>
+<li>the demo store — the catalogue in this repository, whose prices and stock rotate daily by a seeded rule — accounts for 20 of them: 0 added, 0 removed, 20 changed.</li>
+    </ul>
+    <p class="note">
+      A source seen for the first time reports every record as added, because there
+      is no previous snapshot to compare it against — the diff says so instead of
+      pretending nothing changed.
+    </p>
+    <p class="links">
+      <a class="btn" href="changes.html">The full change report</a>
+      <a class="btn" href="changes.json">The same report as JSON</a>
+    </p>
+  </div>
+</section>
+
+<section id="recording" aria-labelledby="recording-h">
+  <div class="wide">
+    <h2 id="recording-h">A browser walking an infinite scroll</h2>
+    <p>
+      The demo store's <code>/scroll</code> page loads twelve products at a time as
+      you reach the bottom of it, and announces its own end by setting
+      <code>data-done="true"</code> on the container. The scraper scrolls until that
+      appears, or until the item count has stayed flat for three rounds — never a
+      fixed number of scrolls, because a page that stalls without saying so must not
+      spin forever. This is that, recorded during the run above.
+    </p>
+    <video controls preload="metadata" src="media/scroll.webm" width="1280" height="720">
+      Your browser cannot play this recording. It is a WebM file at
+      <a href="media/scroll.webm">media/scroll.webm</a>.
+    </video>
+    <h3>The same scroll, one action at a time</h3>
+    <p>
+      The run also recorded a Playwright trace of it, and a trace is more than a
+      video: it can be stepped through action by action, with the page's DOM as it
+      was at each step, the network the page made, the timings, and the source
+      beside the line that ran. Watching it answers "did it work"; stepping through
+      it answers "what exactly did it do".
+    </p>
+    <p class="links">
+      <a class="btn primary" href="https://trace.playwright.dev/?trace=https://wolfgung.github.io/Web-Scraping-Automation-Framework/media/scroll-trace.zip">Step through the scroll</a>
+      <a class="btn" href="media/scroll-trace.zip">Download the trace</a>
+    </p>
+    <p class="note">
+      The first link opens the file in Playwright's own trace viewer, which is a
+      static page that reads the trace straight from this site. The second is the
+      same file to keep: <code>playwright show-trace scroll-trace.zip</code> opens it
+      locally, with no upload anywhere.
+    </p>
+  </div>
+</section>
+
+<section id="structure" aria-labelledby="structure-h">
+  <div class="wide">
+    <h2 id="structure-h">How it is put together</h2>
+    <figure>
+      <a href="assets/architecture.svg">
+        <img src="assets/architecture.svg" alt="Three sources feed one pipeline. The books source reads books.toscrape.com over the polite HTTP client; the quotes source drives a Chromium page through Playwright; the demo source reads the JSON API of the demo store that ships in this repository. All three yield raw records into the same pipeline: validate, normalise, snapshot into SQLite, diff against the previous snapshot, and report. The report is written as JSON and as HTML, the snapshot is exported as CSV and JSON, and the published page is built from the report and the run statistics.">
+      </a>
+      <figcaption>Three sources, one pipeline. A source only knows how to fetch and what its records mean; everything after that is shared, which is why adding a fourth source is one file.</figcaption>
+    </figure>
+    <figure>
+      <a href="assets/pipeline.svg">
+        <img src="assets/pipeline.svg" alt="Every push and pull request runs the gate: lint, unit, parser and integration tests with no network, and a browser job against the demo store. The nightly schedule and a manual run with the publish box ticked add a probe of both practice sites, then the live job, which restores the database from the previous publication, starts the demo store, scrapes every source that answered, records the scroll, exports the snapshots and runs the live checks without letting a red one stop the run. The showcase job then merges the three results directories, generates the Allure report with the history carried over, builds this page and force-pushes the whole site to the gh-pages branch, which GitHub Pages serves.">
+      </a>
+      <figcaption>The gate never touches the network. The night's run is the only one that reaches the practice sites, and the only one that publishes.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="doors" aria-labelledby="doors-h">
+  <div class="wrap">
+    <h2 id="doors-h">Which door each source goes through, and why</h2>
+    <p>
+      A browser is the expensive answer, so it is used where it is the only answer
+      and nowhere else. The choice is per source and it is defended by a test, not
+      by a preference.
+    </p>
+
+    <h3>books.toscrape.com — plain HTTP</h3>
+    <p>
+      The catalogue is server-rendered, so <code>src/scrapewatch/sources/books.py</code>
+      walks it with the HTTP client alone: no browser starts, and a thousand books
+      cost fifty requests instead of fifty page loads. Choosing not to start a
+      browser is the engineering decision here, and the parsers are proven against
+      pages saved from the real site under <code>tests/fixtures/books/</code>, so the
+      gate can check them with no network and no flakiness.
+    </p>
+
+    <h3>quotes.toscrape.com — a browser, because nothing else can see the page</h3>
+    <p>
+      The site's <code>/js/</code> page ships its quotes as a JSON array inside a
+      <code>&lt;script&gt;</code> block and renders them with client-side JavaScript,
+      so anything that only speaks HTTP sees an empty page.
+      <code>tests/parsers/test_quotes_parser.py</code> is the proof rather than the
+      claim: the same parser finds nothing in the raw fetched page and every quote in
+      what the browser rendered.
+    </p>
+
+    <h3>The demo store — a target that changes on purpose</h3>
+    <p>
+      Change detection cannot be demonstrated against a catalogue that never moves,
+      and it must not be demonstrated by editing the database by hand. The store in
+      <code>src/scrapewatch/demo_store/</code> derives every price and stock level
+      from the date with a seeded rule, so two runs on two days genuinely differ and
+      the same day always reproduces. It also carries the infinite-scroll page the
+      browser engine is exercised against, and a login wall, so a session-only view
+      has somewhere to exist.
+    </p>
+  </div>
+</section>
+
+<section id="scope" aria-labelledby="scope-h">
+  <div class="wrap">
+    <h2 id="scope-h">What it deliberately does not do</h2>
+    <div class="aside">
+      <h3>Out of scope, by decision</h3>
+      <ul>
+        <li><b>Anti-bot evasion.</b> No fingerprint spoofing, no stealth plugins, no
+          captcha solving. The scraper identifies itself by name in its
+          <code>User-Agent</code> and links back to the repository.</li>
+        <li><b>Proxy rotation.</b> One origin, one honest address. Rotating
+          addresses to get around a rate limit is the opposite of the politeness the
+          client is built around.</li>
+        <li><b>Speed.</b> Nothing here is tuned for throughput. There is a minimum
+          interval between two requests to the same host and a bounded retry budget,
+          and both are floors on politeness rather than ceilings on performance.</li>
+        <li><b>Sites beyond the three named.</b> Two public practice sites that exist
+          to be scraped, and a store that ships in this repository. Pointing this at
+          anything else is a decision for whoever does it.</li>
+        <li><b>A scheduler inside the application.</b> The night's run is a cron
+          entry in the pipeline, not a daemon in the code. A tool that scrapes when
+          it is asked is much easier to reason about than one that scrapes on its
+          own.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="decisions" aria-labelledby="decisions-h">
+  <div class="wrap">
+    <h2 id="decisions-h">Four decisions that keep it honest</h2>
+
+    <h3>Politeness lives in the client, not in each source</h3>
+    <p>
+      <code>src/scrapewatch/http.py</code> reads <code>robots.txt</code> before it
+      fetches anything from an origin, keeps a minimum interval between requests to
+      that host, retries on its own budget, and counts every request, retry and byte.
+      A source that forgot to be polite is not possible, because a source does not
+      make requests — the client does. A site whose <code>robots.txt</code> cannot be
+      read at all is treated as disallowed: a scraper that cannot read the rules does
+      not get to assume there are none.
+    </p>
+
+    <h3>One bad record costs itself, not the night</h3>
+    <p>
+      <code>src/scrapewatch/pipeline/run.py</code> normalises record by record and
+      isolates the failures, so one malformed listing out of a thousand is counted as
+      a parse error and named in the run statistics while the other 999 — some of
+      which may carry the very price change this tool exists to find — are still
+      snapshotted. A source is only "skipped" when it produced nothing usable at all,
+      and that is a different sentence on this page.
+    </p>
+
+    <h3>Snapshots are kept, not overwritten; the diff compares the last two</h3>
+    <p>
+      <code>src/scrapewatch/storage.py</code> never writes over yesterday. Records are
+      matched across snapshots by the identifier the site gives them — a slug, a
+      product id — so a catalogue that reorders itself is not reported as a thousand
+      changes, and a price that moved is reported as the one field that moved, with
+      its before and after. The history is bounded on purpose: the last
+      30 snapshots of every source are kept and the rest are pruned after
+      each run, because this database is published and an unbounded one eventually
+      cannot be.
+    </p>
+
+    <h3>The gate never touches the network</h3>
+    <p>
+      Parsing is proven against pages saved from the real sites and dated, in
+      <code>tests/fixtures/</code>. That is what makes a red live check meaningful:
+      the fixtures still parse and the live page no longer does, which is markup
+      drift and not an outage. The night's run reaches the sites; a push never does.
+    </p>
+  </div>
+</section>
+
+<section class="closing" aria-labelledby="tests-h">
+  <div class="wrap">
+    <h2 id="tests-h">The tests, and the report from this run</h2>
+    <p>
+      278 checks ran in the same pipeline that published this page:
+      229 of pure logic, 7 of parsing saved pages, 27 of the pipeline on a real SQLite file, 12 through a browser against the demo store, 3 against the real practice sites. They are counted here rather than at the top because this
+      project's subject is the data above; the tests are how it is kept true.
+      278 of them passed.
+
+
+
+
+    </p>
+    <p>
+      All 3 checks against the real practice sites passed in this run,
+      which is the statement that the markup those parsers were written for is
+      still the markup the sites serve.
+    </p>
+    <p>
+      Failures in the report are sorted by the text of the failure into four groups —
+      a product or site defect, a timeout, markup drift, and an infrastructure
+      problem — because that is what decides who picks the failure up. The sorting
+      reads the message, so it is a first guess and not a diagnosis; what it does
+      separate reliably is the pair that matters most for a scraper pointed at
+      somebody else's site: the page answering differently, and the page not
+      answering at all.
+    </p>
+    <p class="links">
+      <a class="btn primary" href="report/">Open the Allure report</a>
+      <a class="btn" href="https://github.com/WolfGung/Web-Scraping-Automation-Framework">Repository and documentation</a>
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Collected from <a href="https://books.toscrape.com">books.toscrape.com</a> and
+      <a href="https://quotes.toscrape.com">quotes.toscrape.com</a>, two public sites
+      published specifically as practice targets for scraping, and from a demo store
+      that ships inside this repository. <code>robots.txt</code> is read and honoured
+      on every origin, requests to one host are spaced by at least half a second,
+      retries are bounded, and the client names this project and links to it in its
+      <code>User-Agent</code>. No employer code, data or systems are involved.
+    </p>
+    <p>Built from revision <code>eb3dc6b</code>; the run finished 23 September 2026, 09:46 UTC.</p>
+  </div>
+</footer>
+
+</body>
+</html>
