@@ -34,11 +34,13 @@ def script_env() -> dict[str, str]:
 
 @dataclass
 class PublishedSite:
-    """What a test can do with the stand-in: lay files out, point a script at it, see what was asked."""
+    """What a test can do with the stand-in: lay files out, make a path answer a
+    status of its choosing, point a script at it, and see what was asked."""
 
     root: Path
     url: str
     requested: list[str]
+    statuses: dict[str, int]
 
     def publish(self, path: str, body: str | bytes) -> None:
         target = self.root / path
@@ -48,17 +50,26 @@ class PublishedSite:
         else:
             target.write_bytes(body)
 
+    def answer(self, path: str, status: int) -> None:
+        """Answer `status` for `path` from now on, whatever the directory holds."""
+        self.statuses[f"/{path}"] = status
+
 
 @pytest.fixture
 def published_site(tmp_path: Path) -> Iterator[PublishedSite]:
-    """A static server over an empty directory; a file answers 200, anything else 404."""
+    """A static server over an empty directory: a file answers 200, anything else
+    404, and a path given a status with `answer` answers that instead."""
     root = tmp_path / "published-site"
     root.mkdir()
     requested: list[str] = []
+    statuses: dict[str, int] = {}
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self) -> None:
             requested.append(self.path)
+            if self.path in statuses:
+                self.send_error(statuses[self.path])
+                return
             super().do_GET()
 
         def log_message(self, *args: object) -> None:
@@ -68,7 +79,9 @@ def published_site(tmp_path: Path) -> Iterator[PublishedSite]:
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        yield PublishedSite(root=root, url=f"http://127.0.0.1:{server.server_address[1]}/", requested=requested)
+        yield PublishedSite(
+            root=root, url=f"http://127.0.0.1:{server.server_address[1]}/", requested=requested, statuses=statuses
+        )
     finally:
         server.shutdown()
         server.server_close()

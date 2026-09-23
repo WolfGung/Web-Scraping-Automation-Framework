@@ -41,7 +41,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra --strict-markers --strict-config"
 markers = [
-    "unit: pure logic, no I/O",
+    "unit: pure logic and the project's own tooling; no network beyond loopback",
     "parsers: parsing of saved fixture pages",
     "integration: pipeline against a real SQLite file",
     "e2e: browser or full-stack runs against the demo store",

@@ -13,12 +13,12 @@ What is shown here is the full cycle of such a job: the rules the collection has
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 237 | none |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 239 | loopback only |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 27 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 283 | none |
+| the gate, `pytest -m "not live"` | the four rows above it | 285 | loopback only |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 

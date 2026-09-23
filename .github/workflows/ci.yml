@@ -261,7 +261,9 @@ jobs:
   deploy:
     name: Deploy the showcase to GitHub Pages
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Longer than deploy-pages' own ten-minute timeout, so a stuck deployment
+    # fails with that action's message instead of being cancelled around it.
+    timeout-minutes: 15
     # Only a site that was just built, so the gates on `showcase` hold here too.
     needs: showcase
     # The two permissions a Pages deployment takes, held by this job alone: the

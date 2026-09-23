@@ -160,6 +160,25 @@ def test_the_history_is_read_from_the_address_the_page_is_built_for() -> None:
     assert re.findall(r'SITE_URL="\$\{SITE_URL:-([^}"]+)\}"', _text()) == [PAGE_URL]
 
 
+def _workflow_site_url() -> str:
+    """The address CI hands both scripts, as `.github/workflows/ci.yml` spells it."""
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    values = re.findall(r"^\s*SITE_URL:\s*[\"']?([^\"'\s]+)[\"']?\s*$", workflow, flags=re.M)
+    assert len(values) == 1, (
+        f".github/workflows/ci.yml sets SITE_URL {len(values)} time(s), not once: {values}. "
+        f"Both scripts read it, so this test needs to know which value they are given."
+    )
+    return values[0]
+
+
+def test_ci_hands_the_scripts_the_address_the_page_is_built_for() -> None:
+    """CI overrides the scripts' default, so its value is the one the night uses. A
+    typo there would fail nothing: every history file would come back 404, which
+    reads as a publication with no trend yet, and so would the database, which reads
+    as a first night — and the next publication would start the history over."""
+    assert _workflow_site_url() == PAGE_URL
+
+
 # -- the script, actually run ------------------------------------------------------
 
 #: An Allure result the page builder can summarise: one passed `unit` case.
@@ -191,14 +210,26 @@ _CHANGES = {
 
 #: Stands in for the Allure command line: the report's contents are not what these
 #: tests are about, and generating a real one would need a JVM to prove a shell script.
+#: It does keep the one habit of Allure's the trend depends on: whatever history is in
+#: the results directory when it runs goes into the report — so history that turned
+#: up only after `generate` never reaches the report, here as with the real thing.
 _FAKE_ALLURE = """#!/bin/sh
+results=""
 out=""
 while [ $# -gt 0 ]; do
-  if [ "$1" = "-o" ]; then out="$2"; fi
+  case "$1" in
+    -o) out="$2"; shift ;;
+    generate|--clean) ;;
+    *) results="$1" ;;
+  esac
   shift
 done
 mkdir -p "$out"
 echo "<!doctype html><title>report</title>" > "$out/index.html"
+if [ -d "$results/history" ]; then
+  mkdir -p "$out/history"
+  cp -R "$results/history/." "$out/history/"
+fi
 """
 
 #: The history Allure writes beside a report, one file per name, in the shape it
@@ -288,12 +319,21 @@ def _as_served() -> dict[str, str]:
     return {name: json.dumps(value) for name, value in HISTORY.items()}
 
 
-def _carried(checkout: Path) -> dict[str, str]:
-    """The history the build handed Allure, by file name, as it was written there."""
-    history = checkout / "allure-results-merged" / "history"
+def _history_files(directory: Path) -> dict[str, str]:
+    history = directory / "history"
     if not history.is_dir():
         return {}
     return {path.name: path.read_text(encoding="utf-8") for path in sorted(history.iterdir())}
+
+
+def _carried(checkout: Path) -> dict[str, str]:
+    """The history the build handed Allure, by file name, as it was written there."""
+    return _history_files(checkout / "allure-results-merged")
+
+
+def _reported(checkout: Path) -> dict[str, str]:
+    """The history the generated report carries forward for the next publication."""
+    return _history_files(checkout / "site" / "report")
 
 
 def test_the_build_assembles_the_site_and_leaves_git_as_it_found_it(checkout, build, published_site, tmp_path) -> None:
@@ -338,14 +378,17 @@ def test_the_build_assembles_the_site_and_leaves_git_as_it_found_it(checkout, bu
 
 def test_the_previous_publications_history_is_read_back_from_the_site(checkout, build, published_site) -> None:
     """All five of Allure's history files come down from `SITE_URL` into the merged
-    results, where `allure generate` looks for them, each exactly as it was served."""
+    results, where `allure generate` looks for them, each exactly as it was served —
+    and they are there before it runs, so the generated report carries them on."""
     served = _as_served()
     _publish_history(published_site, served)
 
     result = build(published_site.url)
 
     assert result.returncode == 0, result.stderr
-    assert _carried(checkout) == {f"{name}.json": body for name, body in served.items()}
+    expected = {f"{name}.json": body for name, body in served.items()}
+    assert _carried(checkout) == expected
+    assert _reported(checkout) == expected, "the history arrived after the report was generated"
     assert sorted(published_site.requested) == sorted(f"/report/history/{name}.json" for name in HISTORY)
 
 

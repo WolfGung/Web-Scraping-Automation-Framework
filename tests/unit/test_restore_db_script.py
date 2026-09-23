@@ -133,6 +133,20 @@ def test_a_site_with_no_database_yet_is_a_first_night(restore, published_site) -
     assert "first night" in result.stdout
 
 
+def test_a_refusal_stops_the_night_rather_than_passing_for_a_first_one(restore, published_site) -> None:
+    """Only a 404 says nothing has been published yet. Any other answer — a 403
+    here — is the site declining to hand the file over, and taking that for a first
+    night would start the history over from one night."""
+    published_site.answer(f"data/{DATABASE_FILE}", 403)
+
+    result = restore(published_site.url)
+
+    assert result.returncode != 0
+    assert [path for path in restore.workdir.rglob("*") if path.is_file()] == [], "nothing is written"
+    assert "Stopping" in result.stderr
+    assert "first night" not in result.stdout
+
+
 def test_an_unreachable_site_stops_the_night(restore, unreachable_site_url) -> None:
     """No answer is not an answer. A night that went ahead without its yesterday
     would publish a database holding one night over the one that holds them all."""
