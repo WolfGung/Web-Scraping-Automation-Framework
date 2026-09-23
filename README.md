@@ -151,10 +151,11 @@ A site that did not answer is skipped with its reason in `run-stats.json`, and t
 
 ## Related work
 
-Two more repositories from the same portfolio:
+Three more repositories from the same portfolio:
 
 - **[Toolshop-Test-Automation-Framework](https://github.com/WolfGung/Toolshop-Test-Automation-Framework)** — a test automation framework built from scratch for an online shop: API, browser and end-to-end cases against a public demo shop or a local Docker stand, with test design documents.
-- **[Marketplace-Test-Automation-Framework](https://github.com/WolfGung/Marketplace-Test-Automation-Framework)** — API and browser tests for a marketplace demo shop, with a smoke set, video and traces per browser test and a published Allure report with a trend.
+- **[Marketplace-Test-Automation-Framework](https://github.com/WolfGung/Marketplace-Test-Automation-Framework)** — API and browser tests for a marketplace shop, run against a small stand shipped in the repository with a nightly drift check of the public demo site, a smoke set, video and traces per browser test and a published Allure report.
+- **[Test-Suite-Rescue](https://github.com/WolfGung/Test-Suite-Rescue)** — a deliberately sick test suite, its cured version on Playwright and Selenium, and the measured difference between them — twenty runs of each, reproducible with one command.
 
 ## Hire me
 
