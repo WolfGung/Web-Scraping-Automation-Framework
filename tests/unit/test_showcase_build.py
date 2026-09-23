@@ -436,6 +436,24 @@ def test_the_published_database_is_named_as_part_of_the_published_data(
     assert "the same SQLite file the next run pulls back" in prose
 
 
+def test_the_workbook_is_published_and_linked_beside_the_exports(
+    results: Path, run_dir: Path, tmp_path: Path
+) -> None:
+    """The workbook `scrape --export-dir` writes into the exports directory is
+    published with the CSV and JSON, under the name the command gives it, and the
+    page says what a reader will find in it."""
+    from scrapewatch.cli import WORKBOOK_FILE
+
+    data = tmp_path / "exports"
+    data.mkdir()
+    (data / WORKBOOK_FILE).write_bytes(b"PK" + b"x" * 3000)
+    out = tmp_path / "site"
+    prose = _prose(_page(results, run_dir, tmp_path, data_dir=data, out_dir=out))
+    assert (out / "data" / WORKBOOK_FILE).read_bytes() == b"PK" + b"x" * 3000
+    assert f'href="data/{WORKBOOK_FILE}"' in prose
+    assert "Excel workbook" in prose
+
+
 def test_a_page_without_data_files_does_not_offer_them(
     results: Path, run_dir: Path, tmp_path: Path
 ) -> None:

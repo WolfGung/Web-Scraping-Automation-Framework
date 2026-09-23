@@ -11,12 +11,12 @@ A scraping and change-monitoring project for catalogue data: three sources colle
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 255 | loopback only |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 256 | loopback only |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 32 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 306 | loopback only |
+| the gate, `pytest -m "not live"` | the four rows above it | 307 | loopback only |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
@@ -48,6 +48,7 @@ Last night's run is published whole, not summarised:
 
 - **[The page](https://wolfgung.github.io/Web-Scraping-Automation-Framework/)** — built from that run's own `run-stats.json` and change report, so every figure on it came out of the run it describes.
 - **The data, as files you can open:** [`books.csv`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv), [`books.json`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.json), [`quotes.json`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/quotes.json), [`demo.json`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/demo.json) — and [the SQLite database itself](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/scrapewatch.sqlite3), which is what tonight's diff was made against.
+- **[The same data as an Excel workbook](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/scrapewatch.xlsx)** — a sheet per source with the values that changed since the night before highlighted, and a sheet listing every change.
 - **[What changed since the night before](https://wolfgung.github.io/Web-Scraping-Automation-Framework/changes.html)** — the change report, also published [as JSON](https://wolfgung.github.io/Web-Scraping-Automation-Framework/changes.json) for anything that wants to read it.
 - **[The recording](https://wolfgung.github.io/Web-Scraping-Automation-Framework/media/scroll.webm)** — Chromium walking the demo store's infinite scroll to the end, as it happened.
 - **[The same scroll in the Playwright trace viewer](https://trace.playwright.dev/?trace=https://wolfgung.github.io/Web-Scraping-Automation-Framework/media/scroll-trace.zip)** — steppable action by action, with the page's DOM at each step.

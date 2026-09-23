@@ -59,6 +59,11 @@ DATA_FILES: tuple[tuple[str, str], ...] = (
     ("quotes.json", "every quote collected in this run"),
     ("demo.json", "the demo store's catalogue as it stood during this run"),
     (
+        "scrapewatch.xlsx",
+        "the same records as one Excel workbook: a sheet per source with the values that changed since "
+        "the previous snapshot highlighted, and a sheet listing every change",
+    ),
+    (
         "scrapewatch.sqlite3",
         "the database itself: every snapshot this project has taken, which is what "
         "this run's diff was made against and what the next run will compare with",

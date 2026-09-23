@@ -840,15 +840,16 @@ def test_a_source_that_never_ran_reads_like_one_that_did() -> None:
 
 
 def test_the_files_the_cli_exports_are_the_files_the_page_publishes() -> None:
-    """`--export-dir` writes `<source>.<format>`; the page links exactly those.
+    """`--export-dir` writes `<source>.<format>` and the workbook; the page links exactly those.
 
     The database is the one published file no export produces — it is the storage
     itself, copied in by the publish step — so it is the one name taken out of the
     comparison rather than left to look like a missing export.
     """
-    from scrapewatch.cli import EXPORT_FORMATS
+    from scrapewatch.cli import EXPORT_FORMATS, WORKBOOK_FILE
     from showcase.build import DATA_FILES
 
     exported = {f"{source}.{fmt}" for source, formats in EXPORT_FORMATS.items() for fmt in formats}
+    exported.add(WORKBOOK_FILE)
     published = {name for name, _description in DATA_FILES} - {DATABASE_FILE}
     assert exported == published
