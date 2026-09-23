@@ -17,7 +17,9 @@ from typing import Any
 from scrapewatch.models import RawRecord, Record
 
 #: First character of a price string tells us the currency; anything else is unparsable.
-_CURRENCY_SYMBOLS = {"£": "GBP", "$": "USD", "€": "EUR"}
+#: `scrapewatch.workbook` reads the same map the other way round, to print a price
+#: with the symbol it was scraped with.
+CURRENCY_SYMBOLS = {"£": "GBP", "$": "USD", "€": "EUR"}
 _RATING_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 _WHITESPACE_RE = re.compile(r"\s+")
 
@@ -69,7 +71,7 @@ def _parse_price(value: Any) -> tuple[Decimal, str]:
     if not isinstance(value, str) or not value:
         raise ValueError(f"price: cannot parse {value!r}")
     symbol, digits = value[0], value[1:]
-    currency = _CURRENCY_SYMBOLS.get(symbol)
+    currency = CURRENCY_SYMBOLS.get(symbol)
     if currency is None:
         raise ValueError(f"price: unknown currency in {value!r}")
     try:
