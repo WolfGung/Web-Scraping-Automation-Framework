@@ -1,13 +1,11 @@
 # Web Scraping Automation Framework
 
+A scraping and change-monitoring project for catalogue data: three sources collected every night, compared with the night before, and published as CSV and JSON.
+
 [![CI](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml)
 [![live report: Allure](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
-
-ScrapeWatch is a scraping and change-monitoring project built from scratch for catalogue data: it collects three sites every night, compares each night's records against the night before, and publishes the data and the differences as files anyone can open.
-
-What is shown here is the full cycle of such a job: the rules the collection has to obey written down as code, a pipeline that validates and normalises every record before storing it, and a test suite that runs in CI on every push. The run is scheduled nightly, the collected data leaves as CSV and JSON, and the browser half is covered end to end — Chromium against a store this repository ships, down to its login. The data and the test report are both published, so everything claimed below can be checked without cloning anything.
 
 ## Coverage
 
@@ -22,7 +20,13 @@ What is shown here is the full cycle of such a job: the rules the collection has
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
-The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
+## What this shows
+
+- **Web scraping that behaves.** Rate limits, retries and robots.txt are code with tests, not promises.
+- **Data extraction you can open.** Every record is validated and normalised, then exported as CSV and JSON.
+- **Monitoring that says what changed.** Each night is compared with the one before, and the differences are published.
+
+## Evidence
 
 [![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 
@@ -137,6 +141,8 @@ Plainly, because these are choices and not gaps:
 - **No site without a permissive robots policy.** The client refuses on a `Disallow` and refuses on a robots.txt it could not read, and both practice sites were checked before a line of this was written ([`tests/fixtures/README.md`](tests/fixtures/README.md)).
 
 ## The nightly publication
+
+The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the gate on every push and pull request. On the nightly schedule (`0 5 * * *`) it does the rest, in this order: probe both practice sites and record exactly what each answered; restore the database from the last publication; scrape every source that answered and export what it collected; record the scroll; run the live checks without letting them stop the night; then merge all three jobs' Allure results and publish the page, the report, the data and the media to GitHub Pages.
 
