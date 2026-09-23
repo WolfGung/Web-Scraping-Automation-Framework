@@ -11,19 +11,19 @@ A scraping and change-monitoring project for catalogue data: three sources colle
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 256 | loopback only |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 262 | loopback only |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 32 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 307 | loopback only |
+| the gate, `pytest -m "not live"` | the four rows above it | 313 | loopback only |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
 ## What this shows
 
 - **Web scraping that behaves.** Rate limits, retries and robots.txt are code with tests, not promises.
-- **Data extraction you can open.** Every record is validated and normalised, then exported as CSV and JSON.
+- **Data extraction you can open.** Every record is validated and normalised, then exported as CSV, JSON and a formatted Excel workbook.
 - **Monitoring that says what changed.** Each night is compared with the one before, and the differences are published.
 
 ## Evidence

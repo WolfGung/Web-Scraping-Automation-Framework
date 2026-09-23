@@ -106,13 +106,17 @@ def test_the_marks_are_the_diff_the_run_made(storage: Storage, tmp_path: Path) -
     new_row = {f"{get_column_letter(column)}3" for column in range(1, len(header) + 1)}
     assert _filled(sheet) == {f"{price}2"} | new_row, "the changed price, and the row of the new product"
 
-    changes = [row[:6] for row in workbook[CHANGES_TITLE].iter_rows(min_row=2, values_only=True)]
+    changes_sheet = workbook[CHANGES_TITLE]
+    changes = [row[:6] for row in changes_sheet.iter_rows(min_row=3, values_only=True)]
     assert [row[:4] for row in changes] == [
         (DEMO, "1", "changed", "price"),
         (DEMO, "4", "added", None),
         (DEMO, "3", "removed", None),
     ]
     assert changes[0][4:] == (pytest.approx(24.99), pytest.approx(22.49))
+    assert changes_sheet["E3"].number_format == changes_sheet["F3"].number_format == '"$"#,##0.00', (
+        "the price change carries the product's own currency"
+    )
     assert "name: Cobalt Backpack" in changes[2][4], "a product that is gone is still named"
 
 
@@ -125,8 +129,8 @@ def test_a_source_with_no_earlier_snapshot_is_marked_with_nothing(storage: Stora
     workbook = load_workbook(_export_workbook(storage, _collected("demo"), report, tmp_path))
     assert _filled(workbook[DEMO]) == set()
     changes = workbook[CHANGES_TITLE]
-    assert changes["A2"].value.startswith(f"First snapshot of {DEMO}:")
-    assert changes.max_row == 2
+    assert changes["A3"].value.startswith(f"First snapshot of {DEMO}:")
+    assert changes.max_row == 3
 
 
 def test_a_source_the_run_did_not_collect_gets_no_sheet(storage: Storage, tmp_path: Path) -> None:

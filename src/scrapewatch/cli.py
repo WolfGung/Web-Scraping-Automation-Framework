@@ -237,7 +237,9 @@ def _export_workbook(storage: Storage, stats: dict[str, dict], report: ChangeRep
     Each sheet is the export's own layout of the same latest snapshot, so it cannot
     disagree with the CSV and JSON beside it, and the marks are the diff this run
     made. A source with no earlier snapshot has nothing to compare with — its diff
-    calls every record new — so it is marked with nothing and named in a note.
+    calls every record new — so it is marked with nothing and named in a note. A
+    change carries its record's currency, so a price shows the symbol it was
+    scraped with on the Changes sheet as well.
     """
     sheets: list[Sheet] = []
     changes: list[Change] = []
@@ -248,6 +250,7 @@ def _export_workbook(storage: Storage, stats: dict[str, dict], report: ChangeRep
         latest, *previous = storage.latest_snapshots(name, n=2)
         header, rows = export_layout(latest)
         collected_at = {record.external_id: record.fetched_at for record in latest}
+        currency = {record.external_id: record.fields.get("currency") for record in latest}
         title = SHEET_TITLES.get(name, name)
         changeset = report.changesets.get(name, ChangeSet()) if previous else ChangeSet()
         if not previous:
@@ -262,11 +265,20 @@ def _export_workbook(storage: Storage, stats: dict[str, dict], report: ChangeRep
             )
         )
         changes += [
-            Change(title, change.external_id, "changed", change.field, change.before, change.after)
+            Change(
+                title, change.external_id, "changed", change.field, change.before, change.after,
+                currency=currency.get(change.external_id),
+            )
             for change in changeset.changed
         ]
-        changes += [Change(title, record.external_id, "added", after=record.fields) for record in changeset.added]
-        changes += [Change(title, record.external_id, "removed", before=record.fields) for record in changeset.removed]
+        changes += [
+            Change(title, record.external_id, "added", after=record.fields, currency=record.fields.get("currency"))
+            for record in changeset.added
+        ]
+        changes += [
+            Change(title, record.external_id, "removed", before=record.fields, currency=record.fields.get("currency"))
+            for record in changeset.removed
+        ]
     if not sheets:
         return None
     path = Path(export_dir) / WORKBOOK_FILE

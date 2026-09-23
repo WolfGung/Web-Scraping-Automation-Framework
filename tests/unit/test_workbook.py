@@ -5,10 +5,14 @@ tables and the night's changes, one changed price, one book that is new and one
 that is gone — and the file it writes is opened again with `openpyxl`, the way a
 reader's spreadsheet would open it. Everything asserted is a property of that
 file: sheet names and order, header cells, row counts, the frozen header and the
-filter, column widths, number formats, value types, and which cells carry a fill.
+filter, column widths, number formats, value types, links, which cells carry a
+fill, the file's own properties, and what each sheet tells Excel to ignore.
 """
 from __future__ import annotations
 
+import re
+import xml.etree.ElementTree as ET
+import zipfile
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -24,6 +28,8 @@ from scrapewatch.workbook import (
     CHANGES_TITLE,
     COLLECTED_AT,
     MAX_WIDTH,
+    NO_CHANGES,
+    TOKEN_WIDTH,
     Change,
     Sheet,
     write_workbook,
@@ -36,6 +42,7 @@ COLLECTED = datetime(2026, 9, 22, 5, 12, 30, tzinfo=UTC)
 ATTIC = "a-light-in-the-attic_1000"
 VELVET = "tipping-the-velvet_999"
 ATTIC_URL = f"https://books.toscrape.com/catalogue/{ATTIC}/index.html"
+DEMO_URL = "http://127.0.0.1:8765/?page=1"
 
 BOOKS = Sheet(
     title="Books",
@@ -50,13 +57,17 @@ BOOKS = Sheet(
 DEMO = Sheet(
     title="Demo store",
     header=["currency", "in_stock", "name", "price", "stock", "external_id", "url", COLLECTED_AT],
-    rows=[["USD", True, "Aurora Desk Lamp", Decimal("24.99"), 14, "1", "http://127.0.0.1:8765/?page=1", COLLECTED]],
+    rows=[["USD", True, "Aurora Desk Lamp", Decimal("24.99"), 14, "1", DEMO_URL, COLLECTED]],
 )
 CHANGES = [
-    Change("Books", ATTIC, "changed", "price", Decimal("49.99"), Decimal("51.77")),
-    Change("Books", VELVET, "added", after={"title": "Tipping the Velvet", "price": Decimal("53.74")}),
-    Change("Books", "soumission_998", "removed", before={"title": "Soumission", "price": Decimal("50.10")}),
+    Change("Books", ATTIC, "changed", "price", Decimal("49.99"), Decimal("51.77"), currency="GBP"),
+    Change("Books", VELVET, "added", after={"title": "Tipping the Velvet", "price": Decimal("53.74")}, currency="GBP"),
+    Change("Books", "soumission_998", "removed", before={"title": "Soumission", "price": Decimal("50.10")},
+           currency="GBP"),
 ]
+
+#: Where the `Changes` table starts: the legend has the top row to itself.
+CHANGES_TOP = 2
 
 
 def _written(tmp_path: Path, sheets=(BOOKS, DEMO), changes=CHANGES, **options):
@@ -70,9 +81,13 @@ def workbook(tmp_path: Path):
     return _written(tmp_path)
 
 
+def _top(sheet) -> int:
+    return CHANGES_TOP if sheet.title == CHANGES_TITLE else 1
+
+
 def _cell(sheet, row: int, column_name: str):
     """The cell in `row` under the header `column_name`."""
-    header = [cell.value for cell in sheet[1]]
+    header = [cell.value for cell in sheet[_top(sheet)]]
     return sheet.cell(row=row, column=header.index(column_name) + 1)
 
 
@@ -104,7 +119,7 @@ def test_the_sheets_are_the_sources_in_run_order_then_the_changes(workbook) -> N
 
 def test_each_sheet_starts_with_its_header_in_bold(workbook) -> None:
     for sheet, header in ((BOOKS.title, BOOKS.header), (DEMO.title, DEMO.header), (CHANGES_TITLE, CHANGES_HEADER)):
-        first_row = workbook[sheet][1][: len(header)]
+        first_row = workbook[sheet][_top(workbook[sheet])][: len(header)]
         assert [cell.value for cell in first_row] == list(header), sheet
         assert all(cell.font.bold for cell in first_row), f"{sheet}: the header is not bold"
 
@@ -112,31 +127,46 @@ def test_each_sheet_starts_with_its_header_in_bold(workbook) -> None:
 def test_each_sheet_holds_one_row_per_record_or_change(workbook) -> None:
     assert workbook["Books"].max_row - 1 == len(BOOKS.rows)
     assert workbook["Demo store"].max_row - 1 == len(DEMO.rows)
-    assert workbook[CHANGES_TITLE].max_row - 1 == len(CHANGES)
+    assert workbook[CHANGES_TITLE].max_row - CHANGES_TOP == len(CHANGES)
 
 
 def test_the_header_is_frozen_and_the_filter_covers_every_row(workbook) -> None:
     expected = {
-        "Books": f"A1:{get_column_letter(len(BOOKS.header))}{1 + len(BOOKS.rows)}",
-        "Demo store": f"A1:{get_column_letter(len(DEMO.header))}{1 + len(DEMO.rows)}",
-        CHANGES_TITLE: f"A1:{get_column_letter(len(CHANGES_HEADER))}{1 + len(CHANGES)}",
+        "Books": ("A2", f"A1:{get_column_letter(len(BOOKS.header))}{1 + len(BOOKS.rows)}"),
+        "Demo store": ("A2", f"A1:{get_column_letter(len(DEMO.header))}{1 + len(DEMO.rows)}"),
+        CHANGES_TITLE: ("A3", f"A2:{get_column_letter(len(CHANGES_HEADER))}{CHANGES_TOP + len(CHANGES)}"),
     }
-    for name, ref in expected.items():
-        assert workbook[name].freeze_panes == "A2", name
+    for name, (frozen, ref) in expected.items():
+        assert workbook[name].freeze_panes == frozen, name
         assert workbook[name].auto_filter.ref == ref, name
 
 
 def test_every_column_has_a_width_and_none_is_wider_than_the_cap(workbook) -> None:
     """A width is the longest value the column shows, header included, and a long
-    title or address stops at the cap instead of turning the sheet into a wall."""
+    title stops at the cap instead of turning the sheet into a wall."""
     for sheet in workbook.worksheets:
         widths = _widths(sheet)
         assert all(width is not None for width in widths.values()), f"{sheet.title}: {widths}"
         assert all(width <= MAX_WIDTH for width in widths.values()), f"{sheet.title}: {widths}"
     books = _widths(workbook["Books"])
     header = list(BOOKS.header)
-    assert books[header.index("url") + 1] == MAX_WIDTH, "the long address is capped"
     assert books[header.index("rating") + 1] < books[header.index("title") + 1], "widths follow the content"
+
+
+def test_a_column_of_addresses_or_slugs_stops_at_the_narrower_cap(tmp_path: Path) -> None:
+    """Text with no space to break at never wraps, so its column is clipped
+    rather than widened: slugs and addresses stop at the narrower cap, and the
+    last columns stay on the screen. Prose keeps the wider one and wraps."""
+    prose = "It is our choices, Harry, that show what we truly are, far more than our abilities."
+    sheet = Sheet(
+        title="Quotes",
+        header=["text", "external_id", "url"],
+        rows=[[prose, "a-slug-" * 12, ATTIC_URL * 2]],
+    )
+    widths = _widths(_written(tmp_path, sheets=[sheet], changes=[])["Quotes"])
+    assert widths[1] == MAX_WIDTH, "prose"
+    assert widths[2] == TOKEN_WIDTH, "a slug"
+    assert widths[3] == TOKEN_WIDTH, "an address"
 
 
 # -- the values, as a spreadsheet reads them ---------------------------------------
@@ -150,6 +180,14 @@ def test_a_price_is_a_number_with_two_decimals_and_its_currency_symbol(workbook)
     assert _cell(workbook["Demo store"], 2, "price").number_format == '"$"#,##0.00'
 
 
+def test_a_price_on_the_changes_sheet_carries_its_currency_too(workbook) -> None:
+    changes = workbook[CHANGES_TITLE]
+    for column in ("before", "after"):
+        price = _cell(changes, CHANGES_TOP + 1, column)
+        assert isinstance(price.value, int | float), column
+        assert price.number_format == '"£"#,##0.00', column
+
+
 def test_a_count_is_an_integer_a_flag_a_boolean_and_a_time_a_date(workbook) -> None:
     stock = _cell(workbook["Demo store"], 2, "stock")
     assert stock.value == 14 and stock.number_format == "0"
@@ -160,6 +198,15 @@ def test_a_count_is_an_integer_a_flag_a_boolean_and_a_time_a_date(workbook) -> N
     collected = _cell(workbook["Books"], 2, COLLECTED_AT)
     assert collected.value == datetime(2026, 9, 22, 5, 12, 30), "naive UTC, as the header says"
     assert collected.number_format == "yyyy-mm-dd hh:mm"
+
+
+def test_a_public_address_is_a_link_and_a_loopback_one_is_not(workbook) -> None:
+    """A book's page is somewhere a reader can go; the demo store's loopback
+    address only ever answered on the machine that scraped it."""
+    book = _cell(workbook["Books"], 2, "url")
+    assert book.hyperlink is not None and book.hyperlink.target == ATTIC_URL
+    assert book.value == ATTIC_URL
+    assert _cell(workbook["Demo store"], 2, "url").hyperlink is None
 
 
 def test_text_that_starts_like_a_formula_stays_text(tmp_path: Path) -> None:
@@ -202,43 +249,101 @@ def test_only_the_changed_cell_and_the_new_row_are_filled(workbook) -> None:
 
 def test_the_changes_sheet_lists_each_change_and_colours_its_kind(workbook) -> None:
     changes = workbook[CHANGES_TITLE]
-    rows = [[cell.value for cell in row[: len(CHANGES_HEADER)]] for row in changes.iter_rows(min_row=2)]
+    first = CHANGES_TOP + 1
+    rows = [[cell.value for cell in row[: len(CHANGES_HEADER)]] for row in changes.iter_rows(min_row=first)]
     assert rows[0] == ["Books", ATTIC, "changed", "price", pytest.approx(49.99), pytest.approx(51.77)]
     assert rows[1][:4] == ["Books", VELVET, "added", None] and rows[1][4] is None
-    assert rows[1][5] == "title: Tipping the Velvet; price: 53.74", "an added record is described in words"
+    assert rows[1][5] == "title: Tipping the Velvet; price: £53.74", "an added record is described in words"
     assert rows[2][:4] == ["Books", "soumission_998", "removed", None] and rows[2][5] is None
-    assert rows[2][4] == "title: Soumission; price: 50.10"
-    kinds = {changes.cell(row=row, column=3).fill.fgColor.rgb for row in (2, 3, 4)}
+    assert rows[2][4] == "title: Soumission; price: £50.10"
+    kinds = {changes.cell(row=row, column=3).fill.fgColor.rgb for row in range(first, first + len(CHANGES))}
     assert len(kinds) == 3, "changed, added and removed each have a colour of their own"
-    assert changes["E2"].number_format == "#,##0.00"
 
 
-def test_the_changes_sheet_says_once_at_the_top_what_the_fills_mean(workbook) -> None:
+def test_the_changes_sheet_says_once_above_the_table_what_the_fills_mean(workbook) -> None:
     changes = workbook[CHANGES_TITLE]
-    notes = [cell.value for cell in changes[1][len(CHANGES_HEADER) :] if cell.value]
-    assert len(notes) == 1
-    assert "light yellow" in notes[0] and "light green" in notes[0]
+    legend = changes["A1"]
+    assert legend.font.italic and not legend.alignment.wrap_text
+    assert legend.value.startswith("Yellow cell: value changed since the previous snapshot. Green row: new record.")
+    assert [cell.value for cell in changes[1][1:]] == [None] * (changes.max_column - 1), "one note, in A1"
+    assert changes.max_column == len(CHANGES_HEADER), "no spacer columns beside the table"
     for data_sheet in (BOOKS, DEMO):
         assert workbook[data_sheet.title].max_column == len(data_sheet.header), (
             f"{data_sheet.title} carries no legend of its own"
         )
 
 
-def test_a_first_night_says_so_in_a2_and_marks_nothing(tmp_path: Path) -> None:
+def test_a_first_night_says_so_in_a3_and_marks_nothing(tmp_path: Path) -> None:
     """With no earlier snapshot, a diff calls every record new. That is not news,
     so nothing is marked and the Changes sheet says why in one line."""
     plain = Sheet(title="Books", header=BOOKS.header, rows=BOOKS.rows)
     workbook = _written(tmp_path, sheets=[plain], changes=[], uncompared=["Books"])
     changes = workbook[CHANGES_TITLE]
-    assert changes["A2"].value.startswith("First snapshot of Books:")
-    assert changes.max_row == 2 and changes.auto_filter.ref == "A1:F1"
+    assert changes["A3"].value.startswith("First snapshot of Books:")
+    assert changes.max_row == 3 and changes.auto_filter.ref == "A2:F2"
     assert _filled(workbook["Books"]) == set()
 
 
-def test_a_night_without_changes_has_a_header_and_no_rows(tmp_path: Path) -> None:
+def test_a_night_without_changes_says_so_rather_than_leaving_the_table_empty(tmp_path: Path) -> None:
+    """The change report states zero changes rather than omitting them, because
+    silence reads as "not checked"; the workbook says it the same way."""
     changes = _written(tmp_path, sheets=[DEMO], changes=[])[CHANGES_TITLE]
-    assert [cell.value for cell in changes[1][: len(CHANGES_HEADER)]] == list(CHANGES_HEADER)
-    assert changes.max_row == 1
+    assert [cell.value for cell in changes[CHANGES_TOP][: len(CHANGES_HEADER)]] == list(CHANGES_HEADER)
+    assert changes["A3"].value == NO_CHANGES
+    assert changes.max_row == 3
+
+
+def test_a_mixed_night_leaves_a_blank_row_before_the_first_snapshot_note(tmp_path: Path) -> None:
+    """Books moved against yesterday; the demo store was collected for the first
+    time. Its note sits under the changes, a row apart, not inside the table."""
+    changes = _written(tmp_path, changes=CHANGES[:1], uncompared=["Demo store"])[CHANGES_TITLE]
+    last_change = CHANGES_TOP + 1
+    assert changes.cell(row=last_change, column=3).value == "changed"
+    assert all(cell.value is None for cell in changes[last_change + 1])
+    assert changes.cell(row=last_change + 2, column=1).value.startswith("First snapshot of Demo store:")
+    assert changes.auto_filter.ref == f"A2:F{last_change}", "the note is not part of the filtered table"
+
+
+# -- the file itself ---------------------------------------------------------------
+
+
+def test_the_file_names_scrapewatch_as_its_author(workbook) -> None:
+    """File, Info reads the creator and the title: this project, not the library it uses."""
+    assert workbook.properties.creator == "ScrapeWatch"
+    assert workbook.properties.title == "ScrapeWatch nightly data"
+
+
+#: The children of a worksheet part, in the order the Office Open XML schema
+#: (CT_Worksheet) requires them. A part is valid only if its children follow it.
+WORKSHEET_ORDER = (
+    "sheetPr", "dimension", "sheetViews", "sheetFormatPr", "cols", "sheetData", "sheetCalcPr",
+    "sheetProtection", "protectedRanges", "scenarios", "autoFilter", "sortState", "dataConsolidate",
+    "customSheetViews", "mergeCells", "phoneticPr", "conditionalFormatting", "dataValidations",
+    "hyperlinks", "printOptions", "pageMargins", "pageSetup", "headerFooter", "rowBreaks", "colBreaks",
+    "customProperties", "cellWatches", "ignoredErrors", "smartTags", "drawing", "legacyDrawing",
+    "legacyDrawingHF", "drawingHF", "picture", "oleObjects", "controls", "webPublishItems", "tableParts",
+    "extLst",
+)
+
+
+def test_every_sheet_tells_excel_the_digits_in_its_ids_are_text_on_purpose(tmp_path: Path) -> None:
+    """An id like `17` is text in the exports and stays text here, and Excel marks
+    every such cell with a green triangle unless the sheet says to ignore it. The
+    library cannot write that instruction, so the writer adds it to each sheet part,
+    where the schema puts it, and the file must still open."""
+    path = tmp_path / "scrapewatch.xlsx"
+    write_workbook(path, [BOOKS, DEMO], CHANGES)
+    with zipfile.ZipFile(path) as package:
+        parts = sorted(name for name in package.namelist() if re.fullmatch(r"xl/worksheets/sheet\d+\.xml", name))
+        assert len(parts) == 3
+        for part in parts:
+            children = [element.tag.split("}")[-1] for element in ET.fromstring(package.read(part))]
+            assert children.count("ignoredErrors") == 1, part
+            positions = [WORKSHEET_ORDER.index(name) for name in children]
+            assert positions == sorted(positions), f"{part}: {children} is not in schema order"
+            ignored = ET.fromstring(package.read(part)).find("{*}ignoredErrors/{*}ignoredError")
+            assert ignored.get("sqref") == "A1:XFD1048576" and ignored.get("numberStoredAsText") == "1"
+    assert load_workbook(path).sheetnames == ["Books", "Demo store", CHANGES_TITLE]
 
 
 def test_every_source_the_project_scrapes_has_a_sheet_title() -> None:
