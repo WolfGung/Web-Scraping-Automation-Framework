@@ -362,7 +362,7 @@
 <!--[if pipeline]-->
     <figure>
       <a href="assets/pipeline.svg">
-        <img src="assets/pipeline.svg" alt="Every push and pull request runs the gate: lint, unit, parser and integration tests with no network, and a browser job against the demo store. The nightly schedule and a manual run with the publish box ticked add a probe of both practice sites, then the live job, which restores the database from the previous publication, starts the demo store, scrapes every source that answered, records the scroll, exports the snapshots and runs the live checks without letting a red one stop the run. The showcase job then merges the three results directories, generates the Allure report with the history carried over, builds this page and force-pushes the whole site to the gh-pages branch, which GitHub Pages serves.">
+        <img src="assets/pipeline.svg" alt="Every push and pull request runs the gate: lint, unit, parser and integration tests with no network, and a browser job against the demo store. The nightly schedule and a manual run with the publish box ticked add a probe of both practice sites, then the live job, which restores the database from the previous publication, starts the demo store, scrapes every source that answered, records the scroll, exports the snapshots and runs the live checks without letting a red one stop the run. The showcase job then merges the three results directories, generates the Allure report with the history read back from the published site and builds this page, and the whole site is deployed to GitHub Pages.">
       </a>
       <figcaption>The gate never touches the network. The night's run is the only one that reaches the practice sites, and the only one that publishes.</figcaption>
     </figure>

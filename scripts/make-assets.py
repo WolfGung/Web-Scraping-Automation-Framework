@@ -139,7 +139,7 @@ CI_RUN = Remote("ci-run", "showcase/images/ci-run.png", 1400, 900, 748)
 PICTURES: tuple[Plate | Served | Remote, ...] = (COVER, DATA, REPORT, CI_RUN)
 DEFAULT_PICTURES = tuple(picture.key for picture in PICTURES if picture is not CI_RUN)
 
-#: Where `allure generate` is asked to write, by default and in the publish
+#: Where `allure generate` is asked to write, by default and in the build
 #: script. `--report` points this script at another one, which is what a run
 #: that generated into a scratch directory needs.
 DEFAULT_REPORT_DIR = ROOT / "site" / "report"

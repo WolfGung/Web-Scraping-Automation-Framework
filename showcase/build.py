@@ -87,7 +87,7 @@ MIN_TRACE_BYTES = 10 * 1024
 
 #: The recording and the trace, by name. `scrapewatch record-scroll` writes exactly
 #: these two files, so there is no selection to make here and no second, separate
-#: rule in the publish script that could drift out of step with this one: the script
+#: rule in the build script that could drift out of step with this one: the script
 #: hands over the directory, this module publishes what it finds under these names.
 VIDEO_NAME = "scroll.webm"
 TRACE_NAME = "scroll-trace.zip"

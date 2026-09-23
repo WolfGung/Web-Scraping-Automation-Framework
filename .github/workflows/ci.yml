@@ -17,12 +17,19 @@ on:
         type: boolean
         default: false
 
-# Read-only by default, everywhere. Only the job that publishes the page needs to
-# write to this repository, and it asks for that itself (`showcase`, below); every
-# other job here checks out, installs and runs tests. A token no job needs is a
+# Read-only by default, everywhere. Nothing in this workflow writes to this
+# repository: the page is deployed to GitHub Pages straight from the run, and
+# `deploy`, below, is the one job that asks for the two permissions that takes;
+# every other job checks out, installs and runs tests. A token no job needs is a
 # token no job should have.
 permissions:
   contents: read
+
+# Where the showcase is served. The night reads two things back from it: the
+# database the previous night published (`scripts/restore-db.sh`) and the Allure
+# history the report's trend is drawn from (`scripts/build-showcase.sh`).
+env:
+  SITE_URL: https://wolfgung.github.io/Web-Scraping-Automation-Framework/
 
 jobs:
   gate:
@@ -103,8 +110,6 @@ jobs:
     needs: [gate, e2e, reachable]
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -114,7 +119,8 @@ jobs:
 
       - name: Restore the database from the previous publication
         # Without it every night is a first night and every record is reported as
-        # added, because a runner starts with an empty checkout.
+        # added, because a runner starts with an empty checkout. It is read back
+        # from the published site, at `SITE_URL` above.
         run: bash scripts/restore-db.sh
 
       - name: Start the demo store
@@ -193,7 +199,7 @@ jobs:
             allure-results
 
   showcase:
-    name: Publish showcase
+    name: Build the showcase
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: live
@@ -204,15 +210,8 @@ jobs:
     # A pull request never reaches this job: its `github.ref` is
     # `refs/pull/<n>/merge`, not this branch.
     if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    concurrency:
-      group: showcase-${{ github.ref }}
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -232,10 +231,39 @@ jobs:
         with:
           name: live-output
           path: .
-      # No Allure installation step: `scripts/publish-showcase.sh` resolves the
+      # No Allure installation step: `scripts/build-showcase.sh` resolves the
       # command line itself — an explicit `ALLURE_CMD`, then an `allure` on PATH,
       # then `npx allure-commandline`, which is what a GitHub runner lands on.
-      - name: Assemble and publish
-        run: bash scripts/publish-showcase.sh
+      - name: Assemble the site
+        # Builds `site/` and stops: the report, its trend read back from
+        # `SITE_URL`, the page, the data and the media. Nothing is pushed.
+        run: bash scripts/build-showcase.sh
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy the showcase to GitHub Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only a site that was just built, so the gates on `showcase` hold here too.
+    needs: showcase
+    # The two permissions a Pages deployment takes, held by this job alone: the
+    # job that builds the site installs packages and runs code fetched at run
+    # time, and never needs them.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One deployment at a time. A newer one waits for the one under way rather
+    # than cancelling it halfway through.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

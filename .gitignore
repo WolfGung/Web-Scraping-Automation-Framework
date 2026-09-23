@@ -12,9 +12,9 @@ __pycache__/
 .env
 .envrc
 
-# What a run produces. The published copies of these live on gh-pages, built by
-# scripts/publish-showcase.sh — none of them belongs in the history of the code
-# that produces them.
+# What a run produces. The published copies of these are assembled by
+# scripts/build-showcase.sh and deployed to GitHub Pages from the CI run — none of
+# them belongs in the history of the code that produces them.
 data/
 media/
 videos/
@@ -24,9 +24,6 @@ allure-results*/
 allure-report/
 site/
 
-# The worktrees and the staging directory scripts/publish-showcase.sh uses while it
-# assembles the site
-published/
-publish-tree/
+# The staging directory scripts/build-showcase.sh uses while it assembles the site
 publish-data/
 
