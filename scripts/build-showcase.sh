@@ -56,9 +56,11 @@ for dir in "$GATE_RESULTS" "$E2E_RESULTS" "$LIVE_RESULTS"; do
     echo "build-showcase: it did not, so this run would publish a partial report. Stopping." >&2
     exit 1
   fi
+  # Not `cp -t`, which only GNU cp has: `sh -c` puts the target last, as every
+  # cp takes it, and copies the same files on macOS as on a runner.
   find "$dir" -mindepth 1 -maxdepth 1 \
     ! -name categories.json ! -name environment.properties \
-    -exec cp -t "$RESULTS" {} +
+    -exec sh -c 'cp "$@" "$0"' "$RESULTS" {} +
 done
 python3 showcase/merge.py categories \
   "$GATE_RESULTS/categories.json" "$E2E_RESULTS/categories.json" "$LIVE_RESULTS/categories.json" \
@@ -164,7 +166,7 @@ fi
 # and the only reason tomorrow's diff has a yesterday.
 mkdir -p publish-data
 if [ -d "$EXPORTS" ]; then
-  find "$EXPORTS" -mindepth 1 -maxdepth 1 -type f -exec cp -t publish-data {} +
+  find "$EXPORTS" -mindepth 1 -maxdepth 1 -type f -exec sh -c 'cp "$@" "$0"' publish-data {} +
 fi
 if [ -f "$DATABASE" ]; then
   cp "$DATABASE" publish-data/scrapewatch.sqlite3

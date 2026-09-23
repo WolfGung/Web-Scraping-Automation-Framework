@@ -55,4 +55,6 @@ if [ ! -s "$PART" ] || [ "$(head -c 15 "$PART" | tr -d '\0')" != "SQLite format 
 fi
 
 mv "$PART" "$TARGET"
-echo "restore-db: recovered $(wc -c < "$TARGET") bytes from the previous publication into $TARGET"
+# BSD wc pads the count with spaces; stripped, the message reads the same everywhere.
+bytes="$(wc -c < "$TARGET" | tr -d ' ')"
+echo "restore-db: recovered $bytes bytes from the previous publication into $TARGET"
