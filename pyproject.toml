@@ -2,6 +2,7 @@
 name = "scrapewatch"
 version = "0.1.0"
 description = "Web Scraping Automation Framework: polite multi-source scraping with change detection"
+authors = [{ name = "Pavel Zhukov Atum" }]
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28",
