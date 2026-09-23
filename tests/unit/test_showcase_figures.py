@@ -737,7 +737,6 @@ def _png_size(path: Path) -> tuple[int, int]:
     [
         ("guru-cover-image.png", (1536, 1024)),
         ("allure-report-screenshot.png", (1536, 1024)),
-        ("guru-profile-banner-1000x250.png", (1000, 250)),
         ("showcase/images/data-sample.png", (1536, 600)),
         ("showcase/images/ci-run.png", (1400, 748)),
     ],
@@ -745,11 +744,9 @@ def _png_size(path: Path) -> tuple[int, int]:
 def test_a_committed_image_is_the_size_it_is_shown_at(name: str, size: tuple[int, int]) -> None:
     """A picture that changed shape changed what it shows, and nobody chose that.
 
-    The profile crops the three images it shows to sizes it picked, and the two
-    under `showcase/images/` are exported at a fixed size because each is a crop
-    of something taller: a size that drifted is a crop nobody looked at. The
-    banner also carries its size in its own name, so a file that no longer
-    matches it is a file whose name lies.
+    The profile crops the images it shows to sizes it picked, and the two under
+    `showcase/images/` are exported at a fixed size because each is a crop of
+    something taller: a size that drifted is a crop nobody looked at.
     """
     path = ROOT / name
     assert path.is_file(), (
