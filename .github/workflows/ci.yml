@@ -108,6 +108,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [gate, e2e, reachable]
+    # Collects two public practice sites: a site outside this repository never decides the verdict.
+    continue-on-error: true
+    # Whether the night delivered everything the showcase is built from. Set by
+    # the last step, so only a job in which every step succeeded says "true".
+    outputs:
+      delivered: ${{ steps.delivered.outputs.delivered }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -198,18 +204,26 @@ jobs:
             traces
             allure-results
 
+      - name: Say the night delivered
+        # Last, and with no `if:` of its own, so a failed step anywhere above —
+        # the upload included — means it never runs and the output stays empty.
+        id: delivered
+        run: echo "delivered=true" >> "$GITHUB_OUTPUT"
+
   showcase:
     name: Build the showcase
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: live
-    # Two gates, and no third one. The branch is gated here; the run being green
-    # is gated by `needs`, which holds this job back until the gate, the browser
-    # job and the live job have all finished — and `live` in turn needs both of
-    # the other two, so a red gate cannot replace the published page with itself.
-    # A pull request never reaches this job: its `github.ref` is
-    # `refs/pull/<n>/merge`, not this branch.
-    if: github.ref == 'refs/heads/main'
+    # Three gates. `needs` holds this job back until the gate, the browser job
+    # and the live job have all finished — and `live` in turn needs both of the
+    # other two, so a red gate cannot replace the published page with itself. The
+    # branch is gated here: a pull request never reaches this job, since its
+    # `github.ref` is `refs/pull/<n>/merge`, not this branch. And the live job
+    # has to say it delivered. It is allowed to fail without failing the run, and
+    # a job allowed to fail still reads as a success to the jobs that need it, so
+    # `needs` alone would let a night that did not finish replace the page.
+    if: github.ref == 'refs/heads/main' && needs.live.outputs.delivered == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
