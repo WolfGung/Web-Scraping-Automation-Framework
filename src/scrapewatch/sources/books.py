@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from urllib.parse import urljoin
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scrapewatch.http import PoliteClient
 from scrapewatch.models import RawRecord
@@ -59,7 +59,7 @@ def parse_listing(html: str) -> tuple[list[dict], str | None]:
     the page has no book at all, or, for a pod that has some fields but not all,
     the missing field named together with the pod's title when one could be read.
     """
-    tree = HTMLParser(html)
+    tree = LexborHTMLParser(html)
     pods = tree.css("article.product_pod")
     if not pods:
         raise ValueError("article.product_pod not found")
@@ -119,7 +119,7 @@ def parse_detail(html: str) -> dict:
     `in_stock` flag either way — a stock *count* is not something this project
     records for books (see `_parse_availability`).
     """
-    tree = HTMLParser(html)
+    tree = LexborHTMLParser(html)
     crumbs = tree.css("ul.breadcrumb li")
     if len(crumbs) < 3:
         raise ValueError("ul.breadcrumb li: expected at least 3 items (Home / Books / category)")

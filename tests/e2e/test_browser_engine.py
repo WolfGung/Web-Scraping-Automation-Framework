@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 
 import pytest
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scrapewatch.browser import BrowserSession
 from scrapewatch.config import Settings
@@ -18,7 +18,7 @@ def test_scroll_until_reaches_the_end_and_collects_every_item(
     html = browser_session.scroll_until(
         f"{demo_store_url}/scroll", item_selector=".product", done_selector='[data-done="true"]'
     )
-    assert len(HTMLParser(html).css(".product")) == 40
+    assert len(LexborHTMLParser(html).css(".product")) == 40
 
 
 def test_login_opens_the_members_page(demo_store_url: str, browser_session: BrowserSession) -> None:

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import typer
 import uvicorn
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scrapewatch.browser import BrowserSession
 from scrapewatch.config import Settings
@@ -510,7 +510,7 @@ def record_scroll(
                 html = session.scroll_until(
                     f"{resolved_demo_url}/scroll", item_selector=".product", done_selector='[data-done="true"]'
                 )
-            cards = len(HTMLParser(html).css(".product"))
+            cards = len(LexborHTMLParser(html).css(".product"))
             # Before the files are moved into place: a stalled scroll is not
             # published, it is reported.
             _refuse_a_short_scroll(cards)

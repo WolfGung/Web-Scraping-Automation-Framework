@@ -17,7 +17,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from urllib.parse import urljoin
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scrapewatch.browser import BrowserSession
 from scrapewatch.http import PoliteClient
@@ -41,7 +41,7 @@ def parse_quotes(html: str) -> list[dict]:
     browser has run its script, is exactly that page, and proving this function
     returns nothing on it is the whole argument for `BrowserSession` existing.
     """
-    tree = HTMLParser(html)
+    tree = LexborHTMLParser(html)
     quotes: list[dict] = []
     for node in tree.css("div.quote"):
         text_node = node.css_first("span.text")
@@ -129,7 +129,7 @@ class QuotesSource:
                         )
                     self._source_stats.pages = pages_fetched
 
-                    next_node = HTMLParser(html).css_first("li.next a[href]")
+                    next_node = LexborHTMLParser(html).css_first("li.next a[href]")
                     if next_node is None:
                         break
                     if self._max_pages is not None and pages_fetched >= self._max_pages:

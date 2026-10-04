@@ -6,7 +6,7 @@ authors = [{ name = "Pavel Zhukov Atum" }]
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28",
-    "selectolax>=0.3.21",
+    "selectolax>=1.0,<2",
     "pydantic>=2.10",
     "pydantic-settings>=2.6",
     "sqlalchemy>=2.0.36",
