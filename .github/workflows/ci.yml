@@ -37,15 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
       - run: ruff check src tests showcase scripts
       - run: pytest -m "unit or parsers or integration" --alluredir=allure-results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: allure-results-gate
@@ -56,15 +56,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
       - run: playwright install --with-deps chromium
       - run: pytest -m e2e --alluredir=allure-results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: allure-results-e2e
@@ -115,8 +115,8 @@ jobs:
     outputs:
       delivered: ${{ steps.delivered.outputs.delivered }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -193,7 +193,7 @@ jobs:
         run: pytest -m live --alluredir=allure-results
         continue-on-error: true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: live-output
@@ -225,23 +225,23 @@ jobs:
     # `needs` alone would let a night that did not finish replace the page.
     if: github.ref == 'refs/heads/main' && needs.live.outputs.delivered == 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
       # All three results directories, so the report and the test figures on the
       # page cover the whole suite rather than only the leg that scraped.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: allure-results-gate
           path: allure-results-gate
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: allure-results-e2e
           path: allure-results-e2e
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: live-output
           path: .
@@ -254,7 +254,7 @@ jobs:
         run: bash scripts/build-showcase.sh
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -282,4 +282,4 @@ jobs:
       cancel-in-progress: false
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
