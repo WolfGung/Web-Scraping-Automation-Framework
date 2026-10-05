@@ -2,7 +2,7 @@
 
 A scraping and change-monitoring project for catalogue data: three sources collected every night, compared with the night before, and published as CSV and JSON.
 
-[![CI](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml)
+[![CI](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 [![live report: Allure](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
@@ -11,12 +11,12 @@ A scraping and change-monitoring project for catalogue data: three sources colle
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, and these pins | 262 | loopback only |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, the workflows, and these pins | 267 | loopback only |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 32 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 313 | loopback only |
+| the gate, `pytest -m "not live"` | the four rows above it | 318 | loopback only |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
@@ -30,11 +30,11 @@ Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.
 
 [![The Allure report's overview page: the donut showing how the run came out, the suites broken out by package beside it, and an environment panel naming the storage scheme, the Python version and the Chromium the browser checks drove.](allure-report-screenshot.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/)
 
-That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from all three CI jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
+That is the report a local run produces, from `pytest --alluredir` and `allure generate`. [The published one](https://wolfgung.github.io/Web-Scraping-Automation-Framework/report/) is the same report built from the night's run, all three of its test jobs' results merged together, with the trend carried over from the previous publication — click the picture to open it.
 
 [![The workflow's run page on GitHub, seen logged out: a green check beside the run's title, "Success" in the summary panel beside who started it and how long it took, and every job of the workflow listed down the side and in the graph.](showcase/images/ci-run.png)](https://github.com/WolfGung/Web-Scraping-Automation-Framework/actions/runs/35883495531)
 
-That is the run behind the badge at the top of this page, as a visitor sees it — `PYTHONPATH=. python scripts/make-assets.py --ci-run` photographs it again, and refuses a run that is not green rather than committing a picture of one.
+That is a green run of the night — the whole suite, the scrape and the publication — as a visitor sees it. `PYTHONPATH=. python scripts/make-assets.py --ci-run` photographs the latest one again, and refuses a run that is not green rather than committing a picture of one.
 
 [![A fragment of the published books.csv drawn as a plain table: the file's own column names across the top, then rows of books with their prices, ratings and stock in monospace, the long identifier and address columns clipped to fit the plate.](showcase/images/data-sample.png)](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/books.csv)
 
@@ -85,7 +85,7 @@ A refusal is not a crash: the source is skipped, the run continues, and `run-sta
 
 One path, whatever the door: a source yields raw records, [`pipeline/run.py`](src/scrapewatch/pipeline/run.py) validates them against a typed model, normalises them into comparable fields (a price becomes a `Decimal` and a currency, `In stock` becomes a flag, a rating word becomes a number), writes the snapshot, diffs it against the previous snapshot of the same source, and reports what moved. One malformed record is counted and isolated rather than discarding the fetch around it; one broken source is recorded as skipped rather than aborting the night.
 
-[![Two lanes. The gate, run on every push and pull request and touching no network: lint, then the checks that need no site, then the browser check. The night, run on a schedule: probe the practice sites, restore the database from the last publication, scrape and export, record the scroll, run the live checks, then merge every job's results and publish the page. Underneath, the database being carried from one night to the next.](showcase/assets/pipeline.svg)](showcase/assets/pipeline.svg)
+[![Two lanes. The gate, the workflow every push and pull request runs, touching no network: lint, then the checks that need no site, then the browser check. The night, a workflow of its own on a schedule, which runs the same gate first: probe the practice sites, restore the database from the last publication, scrape and export, record the scroll, run the live checks, then merge every job's results and publish the page. Underneath, the database being carried from one night to the next.](showcase/assets/pipeline.svg)](showcase/assets/pipeline.svg)
 
 Storage is SQLAlchemy over SQLite by default — one clone and it runs — or PostgreSQL through the Compose profile. The database URL is the only difference between the two.
 
@@ -143,11 +143,11 @@ Plainly, because these are choices and not gaps:
 
 ## The nightly publication
 
-The gate is what every push and every pull request runs. The `live` row is opt-in (`make test-live`) and runs on the nightly schedule, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
+The gate is what every push and every pull request runs: [`.github/workflows/ci.yml`](.github/workflows/ci.yml), the workflow the badge at the top of this page reads — its push runs on main, and nothing else. It never reaches a site this project scrapes, so somebody else's server going down can never turn it red. The `live` row is opt-in (`make test-live`) and runs at night, where a red check is the drift signal this project exists to produce — the night is not allowed to fail because of it, and the published page states it instead.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the gate on every push and pull request. On the nightly schedule (`0 5 * * *`) it does the rest, in this order: probe both practice sites and record exactly what each answered; restore the database from the last publication; scrape every source that answered and export what it collected; record the scroll; run the live checks without letting them stop the night; then merge all three jobs' Allure results and publish the page, the report, the data and the media to GitHub Pages.
+[`.github/workflows/nightly.yml`](.github/workflows/nightly.yml) is the night, and the only workflow that publishes. It runs on the schedule `0 5 * * *` (UTC), or by hand from the Actions tab, one run at a time. It starts with the same gate — [`.github/workflows/checks.yml`](.github/workflows/checks.yml), which both workflows call — and then does the rest, in this order: probe both practice sites and record exactly what each answered; restore the database from the last publication; scrape every source that answered and export what it collected; record the scroll; run the live checks without letting them stop the night; then merge all three jobs' Allure results and publish the page, the report, the data and the media to GitHub Pages.
 
-A site that did not answer is skipped with its reason in `run-stats.json`, and the page prints that reason — a night that collected two sources out of three says so, rather than quietly publishing a smaller number.
+A site that did not answer is skipped, with a notice on the run naming it and its reason in `run-stats.json`. The page prints that reason — a night that collected two sources out of three says so, rather than quietly publishing a smaller number, and it is still a green night. What turns the night red is a defect of this repository — a red gate, a demo store that does not start, a scrape or an export that could not write its outputs, a recording that stalled, a site that could not be built or deployed — or a last publication that could not be read back, because carrying on would start the history over. A red night publishes nothing, so the page goes on showing the last one that finished.
 
 **The database is part of the publication.** It goes out as [`data/scrapewatch.sqlite3`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/scrapewatch.sqlite3), and [`scripts/restore-db.sh`](scripts/restore-db.sh) pulls it back down before the next scrape. That is the only reason a nightly diff has a yesterday at all: a runner starts with an empty checkout, and without it every night would be a first night with every record reported as added. Its history is bounded on purpose — the last 30 nights per source, applied by `scrapewatch scrape --keep-snapshots` — because a published file that grows for ever is a download nobody makes.
 

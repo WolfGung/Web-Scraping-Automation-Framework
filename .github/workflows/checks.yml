@@ -1,0 +1,52 @@
+name: Checks
+
+# The gate: lint and every test that needs no network. Defined once and called
+# from two places — `ci.yml` on every push and pull request, and `nightly.yml`
+# before the night collects anything — so the checks that guard a change and the
+# checks the published report counts are the same checks, and cannot drift apart.
+on:
+  workflow_call:
+
+# Read-only, like everything else here: these jobs check out, install and run
+# tests, and none of them writes anywhere.
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Lint, unit, parsers, integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests showcase scripts
+      - run: pytest -m "unit or parsers or integration" --alluredir=allure-results
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: allure-results-gate
+          path: allure-results
+
+  e2e:
+    name: Browser engine and demo store
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+      - run: pytest -m e2e --alluredir=allure-results
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: allure-results-e2e
+          path: allure-results

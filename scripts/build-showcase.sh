@@ -7,10 +7,10 @@
 # Allure history is read back from the published site (`SITE_URL`) before the
 # report is generated, and without it the report shows a single run and no trend.
 #
-# Nothing is published from here. The CI run uploads site/ as a GitHub Pages
+# Nothing is published from here. The nightly run uploads site/ as a GitHub Pages
 # artifact and deploys it (the `showcase` and `deploy` jobs in
-# .github/workflows/ci.yml), so this script has no branch to write and no commit
-# to make. Run locally, it leaves the assembled site in site/ and nothing else.
+# .github/workflows/nightly.yml), so this script has no branch to write and no
+# commit to make. Run locally, it leaves the assembled site in site/ and nothing else.
 set -euo pipefail
 
 GATE_RESULTS="${1:-allure-results-gate}"

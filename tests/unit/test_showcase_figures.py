@@ -490,12 +490,18 @@ def test_every_count_a_figure_states_is_one_this_module_checks() -> None:
 # -- numbers that are not counts ------------------------------------------------
 
 
+#: The workflow that runs on a schedule: the night's scrape and publication. The
+#: gate's own workflow, `ci.yml`, has none — `tests/unit/test_workflows.py` holds it
+#: to that — so this is the one file a schedule is read from.
+NIGHTLY_WORKFLOW = ".github/workflows/nightly.yml"
+
+
 def _cron() -> str:
     """The nightly schedule, as the workflow spells it."""
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / NIGHTLY_WORKFLOW).read_text(encoding="utf-8")
     schedules = re.findall(r'-\s*cron:\s*"([^"]+)"', workflow)
     assert len(schedules) == 1, (
-        f".github/workflows/ci.yml has {len(schedules)} schedule(s), not one: "
+        f"{NIGHTLY_WORKFLOW} has {len(schedules)} schedule(s), not one: "
         f"{schedules}. The figure names the nightly schedule, so this test needs to "
         f"know which one it means."
     )

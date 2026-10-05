@@ -1,0 +1,249 @@
+name: Nightly scrape
+
+# The product itself: every night, collect the two practice sites and the demo
+# store, compare what came back with the night before, and publish the data, the
+# change report and the test report to GitHub Pages. A manual run from the Actions
+# tab is the same night, on demand. This is the only workflow that reaches the
+# practice sites and the only one that publishes; the README badge reads `ci.yml`
+# and never this one.
+#
+# It runs the gate first (`checks.yml`, the same checks every push gets), so the
+# published report covers the whole suite, and a red gate keeps the night off the
+# page. After that it fails only on a defect of this repository — a demo store
+# that does not start, a scrape or an export that could not write its outputs, a
+# recording that stalled, a site that could not be built or deployed. A practice
+# site that does not answer is not a defect here: it is skipped with a notice
+# naming it, its reason goes into `run-stats.json` and onto the page, and the run
+# stays green.
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+# Read-only by default, everywhere. Nothing in this workflow writes to this
+# repository: the page is deployed to GitHub Pages straight from the run, and
+# `deploy`, below, is the one job that asks for the two permissions that takes;
+# every other job checks out, installs and runs tests. A token no job needs is a
+# token no job should have.
+permissions:
+  contents: read
+
+# One night at a time. A run started while another is under way waits for it to
+# finish rather than racing it, so it restores the database the earlier run
+# published and deploys after it: a later deployment never replaces a newer site
+# with an older one, and no night's history is lost between two of them.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+# Where the showcase is served. The night reads two things back from it: the
+# database the previous night published (`scripts/restore-db.sh`) and the Allure
+# history the report's trend is drawn from (`scripts/build-showcase.sh`).
+env:
+  SITE_URL: https://wolfgung.github.io/Web-Scraping-Automation-Framework/
+
+jobs:
+  gate:
+    name: The gate
+    uses: ./.github/workflows/checks.yml
+
+  reachable:
+    # The practice sites belong to somebody else and cannot be brought up
+    # locally, so the night asks first and skips what does not answer, with the
+    # reason recorded, rather than reporting a failure they did not cause.
+    name: Practice sites reachable from this runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      books: ${{ steps.probe.outputs.books }}
+      quotes: ${{ steps.probe.outputs.quotes }}
+    steps:
+      - id: probe
+        run: |
+          for site in books quotes; do
+            # `|| true` is load-bearing: this step runs under `bash -e`, and a DNS
+            # failure, a refused connection or a timeout makes curl exit non-zero,
+            # which would abort the step before anything reached $GITHUB_OUTPUT and
+            # leave the live job with an empty answer instead of "did not answer".
+            # curl still prints 000 in those cases, and 000 is what gets recorded.
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$site.toscrape.com/" || true)
+            echo "$site=$code" >> "$GITHUB_OUTPUT"
+            if [ "$code" = "200" ]; then
+              echo "$site.toscrape.com answered HTTP 200"
+            elif [ "$code" = "000" ]; then
+              echo "::notice title=$site skipped::$site.toscrape.com did not answer this runner at all — no HTTP response, so a DNS failure, a refused connection or a timeout. That source is skipped tonight, the others still run, and the run does not fail for it."
+            else
+              echo "::notice title=$site skipped::$site.toscrape.com answered HTTP $code; that source is skipped tonight, the others still run, and the run does not fail for it."
+            fi
+          done
+
+  live:
+    name: Nightly live scrape
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: [gate, reachable]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+
+      - name: Restore the database from the previous publication
+        # Without it every night is a first night and every record is reported as
+        # added, because a runner starts with an empty checkout. It is read back
+        # from the published site, at `SITE_URL` above. A publication that cannot
+        # be read stops the night here, deliberately: carrying on would publish a
+        # database holding one night over the one holding every night kept so far.
+        run: bash scripts/restore-db.sh
+
+      - name: Start the demo store
+        # `scrape all` includes the demo source, and the demo store is a server
+        # this repository ships rather than a site out on the internet: nothing
+        # starts it unless this job does, and without it the source would be
+        # skipped with a connection error as its reason.
+        run: |
+          nohup scrapewatch demo-store --port 8765 > demo-store.log 2>&1 &
+          for _ in $(seq 30); do
+            if curl -fs "http://127.0.0.1:8765/api/products?page=1" > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "${ready:-}" != "1" ]; then
+            echo "the demo store did not answer within 30s"
+            cat demo-store.log
+            exit 1
+          fi
+
+      - name: Scrape every source that answered, and export what it collected
+        # The probe's answer becomes flags here rather than in the `run:` line
+        # above, because `--skip-books=${{ ... }}` is not how the flag is spelled:
+        # it is a boolean switch that takes no value, so the shell composes it.
+        # The reason travels with the flag: a source dropped before the run never
+        # reaches `run_sources`, so the CLI is the only place that can put it in
+        # `run-stats.json` for the page to state. A source that answered the probe
+        # and then failed mid-run is skipped by the pipeline itself, with its own
+        # reason, and the command still exits 0 — a skip is a fact the run
+        # reports, not a failure of it.
+        #
+        # The exports are the same command's job (`--export-dir`), and not a step
+        # of their own gated on the probe: a site can answer 200 and still yield
+        # nothing usable, and exporting on the probe's word would publish
+        # yesterday's snapshot under tonight's date while the page said the source
+        # was not collected. The CLI exports what this run's own verdict says it
+        # collected.
+        run: |
+          books="${{ needs.reachable.outputs.books }}"
+          quotes="${{ needs.reachable.outputs.quotes }}"
+          reason() {  # $1 = site, $2 = the code the probe recorded
+            if [ "$2" = "000" ]; then
+              echo "$1.toscrape.com did not answer the CI runner at all — no HTTP response"
+            else
+              echo "$1.toscrape.com answered HTTP $2 from the CI runner"
+            fi
+          }
+          FLAGS=()
+          [ "$books" = "200" ] || FLAGS+=(--skip-books --skip-reason-books "$(reason books "$books")")
+          [ "$quotes" = "200" ] || FLAGS+=(--skip-quotes --skip-reason-quotes "$(reason quotes "$quotes")")
+          scrapewatch scrape all --out data/run --export-dir data/exports "${FLAGS[@]}"
+        env:
+          SCRAPEWATCH_RECORD_VIDEO: "true"
+
+      - name: Record the scroll the page publishes
+        # Nothing in `scrape all` or in the live checks scrolls anything, so the
+        # recording the published page shows is produced here, deliberately, with
+        # the fixed names the page and the publish step expect.
+        run: scrapewatch record-scroll --out media
+
+      - name: Check the live sites against the parsers
+        # Not allowed to stop the job: a red live check is the drift signal this
+        # project exists to produce, and it must not cost the night's collection.
+        # The published page states it instead of hiding it.
+        run: pytest -m live --alluredir=allure-results
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: live-output
+          path: |
+            data
+            media
+            videos
+            traces
+            allure-results
+
+  showcase:
+    name: Build the showcase
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: live
+    # Two gates. `needs` holds this job back until the live job has succeeded —
+    # and `live` in turn needs the gate, so a red gate, or a night that did not
+    # finish, cannot replace the published page. And the branch: a manual run
+    # started on another branch never reaches this job, since its `github.ref`
+    # is not this one.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      # All three results directories, so the report and the test figures on the
+      # page cover the whole suite rather than only the leg that scraped.
+      - uses: actions/download-artifact@v8
+        with:
+          name: allure-results-gate
+          path: allure-results-gate
+      - uses: actions/download-artifact@v8
+        with:
+          name: allure-results-e2e
+          path: allure-results-e2e
+      - uses: actions/download-artifact@v8
+        with:
+          name: live-output
+          path: .
+      # No Allure installation step: `scripts/build-showcase.sh` resolves the
+      # command line itself — an explicit `ALLURE_CMD`, then an `allure` on PATH,
+      # then `npx allure-commandline`, which is what a GitHub runner lands on.
+      - name: Assemble the site
+        # Builds `site/` and stops: the report, its trend read back from
+        # `SITE_URL`, the page, the data and the media. Nothing is pushed.
+        run: bash scripts/build-showcase.sh
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    name: Deploy the showcase to GitHub Pages
+    runs-on: ubuntu-24.04
+    # Longer than deploy-pages' own ten-minute timeout, so a stuck deployment
+    # fails with that action's message instead of being cancelled around it.
+    timeout-minutes: 15
+    # Only a site that was just built, so the gates on `showcase` hold here too.
+    needs: showcase
+    # The two permissions a Pages deployment takes, held by this job alone: the
+    # job that builds the site installs packages and runs code fetched at run
+    # time, and never needs them.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One deployment at a time. A newer one waits for the one under way rather
+    # than cancelling it halfway through.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

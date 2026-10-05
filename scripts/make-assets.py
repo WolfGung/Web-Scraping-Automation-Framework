@@ -41,7 +41,7 @@ what refreshing one of them is, and what keeps a run that only wanted the data
 plate from demanding a freshly generated report. The CI photograph is the one
 export that is not in the default set, because it is the one that reaches the
 network: `--ci-run` asks for it, either at a run page you name or at the latest
-green run of this workflow, looked up through GitHub's public API.
+green run of the nightly workflow, looked up through GitHub's public API.
 
 The HTTP server is this script's own: Allure's report reads its data with
 `fetch`, which a `file://` page is not allowed to do, and the pixel check below
@@ -152,10 +152,12 @@ SAMPLE_CSV = ROOT / "showcase" / "assets" / "books-sample.csv"
 #: than photographing a plate with no data on it.
 TABLE_MARK = "<!-- the table the exporter builds from showcase/assets/books-sample.csv -->"
 
-#: The workflow whose runs this script photographs, and the branch it asks about.
-#: The repository itself is not spelled here: it is read from `pyproject.toml`,
-#: which already states it for anyone installing the project.
-WORKFLOW = ".github/workflows/ci.yml"
+#: The workflow whose runs this script photographs, and the branch it asks about:
+#: the night, which scrapes, runs the whole suite and publishes — the run behind
+#: the page and the data the README links. The repository itself is not spelled
+#: here: it is read from `pyproject.toml`, which already states it for anyone
+#: installing the project.
+WORKFLOW = ".github/workflows/nightly.yml"
 DEFAULT_BRANCH = "main"
 
 #: What `--ci-run` means when it is given without a run page: ask the public API
@@ -601,7 +603,7 @@ def _head_of(branch: str) -> str | None:
 
 
 def _latest_green_run(branch: str = DEFAULT_BRANCH) -> str:
-    """The run page to photograph: the latest green run of this workflow.
+    """The run page to photograph: the latest green run of the nightly workflow.
 
     Asked of the public API, without a token, because the repository is public
     and so is the page being photographed. The run that built what
@@ -685,7 +687,7 @@ def _export_ci_run(browser: Browser, probe: Page, base_url: str, url: str | None
     """Photograph the public run page: the workflow, its status, and its jobs.
 
     Logged out, in a browser with nothing signed in, because that is what a
-    visitor following the badge sees. The page is given the width GitHub lays
+    visitor following the README's link to it sees. The page is given the width GitHub lays
     its two columns out at, and the shot is cropped above the annotations and
     artifacts below them — they are not evidence about the run, and a fixed
     height is what keeps the committed file the same size every time.
@@ -766,7 +768,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         default=None,
         help=(
             "also photograph a GitHub Actions run page into showcase/images/ci-run.png. "
-            "With no URL, the latest completed, successful run of this workflow on "
+            "With no URL, the latest completed, successful run of the nightly workflow on "
             f"{DEFAULT_BRANCH} is looked up through the public API — preferring the run "
             f"that built what origin/{DEFAULT_BRANCH} points at. A run that is not green "
             "is refused rather than photographed."

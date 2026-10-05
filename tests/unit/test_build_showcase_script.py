@@ -2,7 +2,7 @@
 
 `scripts/build-showcase.sh` puts `site/` together — the page, the Allure report of
 the whole run, the night's data, the change report and the media — and stops. The
-CI run uploads that directory as a GitHub Pages artifact and deploys it, so nothing
+nightly run uploads that directory as a GitHub Pages artifact and deploys it, so nothing
 is published from the script, and it has no git to do: no branch, no worktree, no
 commit, no push. The one thing it reads from outside the checkout is the previous
 publication's Allure history, fetched from the published site (`SITE_URL`), which
@@ -160,12 +160,17 @@ def test_the_history_is_read_from_the_address_the_page_is_built_for() -> None:
     assert re.findall(r'SITE_URL="\$\{SITE_URL:-([^}"]+)\}"', _text()) == [PAGE_URL]
 
 
+#: The workflow that runs both scripts: the night, which restores the database
+#: from the published site and publishes the next one.
+NIGHTLY_WORKFLOW = ".github/workflows/nightly.yml"
+
+
 def _workflow_site_url() -> str:
-    """The address CI hands both scripts, as `.github/workflows/ci.yml` spells it."""
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    """The address CI hands both scripts, as the nightly workflow spells it."""
+    workflow = (ROOT / NIGHTLY_WORKFLOW).read_text(encoding="utf-8")
     values = re.findall(r"^\s*SITE_URL:\s*[\"']?([^\"'\s]+)[\"']?\s*$", workflow, flags=re.M)
     assert len(values) == 1, (
-        f".github/workflows/ci.yml sets SITE_URL {len(values)} time(s), not once: {values}. "
+        f"{NIGHTLY_WORKFLOW} sets SITE_URL {len(values)} time(s), not once: {values}. "
         f"Both scripts read it, so this test needs to know which value they are given."
     )
     return values[0]

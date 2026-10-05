@@ -45,10 +45,10 @@ from scrapewatch.sources import BOOKS_PAGE_SIZE, FULL_RUN_SIZES, KNOWN_SOURCES
 from showcase.build import MARKERS
 
 # `_collected` runs `pytest --collect-only` in a subprocess and caches the answer
-# per selection; `_cron` and `_python_floor` read the workflow and pyproject. All
+# per selection; `_cron` and `_python_floor` read the nightly workflow and pyproject. All
 # three already exist for the figures and the cover, and a second copy of a reader
 # is a second thing to keep in step, so they are borrowed rather than rewritten.
-from tests.unit.test_showcase_figures import _collected, _cron, _python_floor
+from tests.unit.test_showcase_figures import NIGHTLY_WORKFLOW, _collected, _cron, _python_floor
 
 pytestmark = pytest.mark.unit
 
@@ -296,7 +296,7 @@ def test_the_readme_spells_the_nightly_schedule_the_way_the_workflow_does() -> N
     cron = _cron()
     assert cron in _text(README), (
         f"{README} no longer names the nightly schedule as \"{cron}\", which is how "
-        f".github/workflows/ci.yml spells it today."
+        f"{NIGHTLY_WORKFLOW} spells it today."
     )
 
 
