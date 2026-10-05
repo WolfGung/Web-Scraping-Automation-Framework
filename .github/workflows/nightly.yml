@@ -11,10 +11,12 @@ name: Nightly scrape
 # published report covers the whole suite, and a red gate keeps the night off the
 # page. After that it fails only on a defect of this repository — a demo store
 # that does not start, a scrape or an export that could not write its outputs, a
-# recording that stalled, a site that could not be built or deployed. A practice
-# site that does not answer is not a defect here: it is skipped with a notice
-# naming it, its reason goes into `run-stats.json` and onto the page, its live
-# check is skipped rather than read as drift, and the run stays green.
+# recording that stalled, a site that could not be built or deployed — or on a
+# last publication that could not be read back, since carrying on would start the
+# history over. A practice site that does not answer is not a defect here: it is
+# skipped with a notice naming it, its reason goes into `run-stats.json` and onto
+# the page, its live check is skipped rather than read as drift, and the run
+# stays green.
 on:
   schedule:
     - cron: "0 5 * * *"
