@@ -13,8 +13,8 @@ name: Nightly scrape
 # that does not start, a scrape or an export that could not write its outputs, a
 # recording that stalled, a site that could not be built or deployed. A practice
 # site that does not answer is not a defect here: it is skipped with a notice
-# naming it, its reason goes into `run-stats.json` and onto the page, and the run
-# stays green.
+# naming it, its reason goes into `run-stats.json` and onto the page, its live
+# check is skipped rather than read as drift, and the run stays green.
 on:
   schedule:
     - cron: "0 5 * * *"
@@ -54,6 +54,10 @@ jobs:
     name: Practice sites reachable from this runner
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # Each output is empty when the site answered HTTP 200, and otherwise the
+    # sentence saying what it did instead. The live job hands that sentence to the
+    # scrape, which writes it into `run-stats.json` for the page to print, and to
+    # the live checks, which skip that site's check with it.
     outputs:
       books: ${{ steps.probe.outputs.books }}
       quotes: ${{ steps.probe.outputs.quotes }}
@@ -64,17 +68,21 @@ jobs:
             # `|| true` is load-bearing: this step runs under `bash -e`, and a DNS
             # failure, a refused connection or a timeout makes curl exit non-zero,
             # which would abort the step before anything reached $GITHUB_OUTPUT and
-            # leave the live job with an empty answer instead of "did not answer".
+            # leave the live job with an empty answer — which reads as "answered".
             # curl still prints 000 in those cases, and 000 is what gets recorded.
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$site.toscrape.com/" || true)
-            echo "$site=$code" >> "$GITHUB_OUTPUT"
             if [ "$code" = "200" ]; then
               echo "$site.toscrape.com answered HTTP 200"
-            elif [ "$code" = "000" ]; then
-              echo "::notice title=$site skipped::$site.toscrape.com did not answer this runner at all — no HTTP response, so a DNS failure, a refused connection or a timeout. That source is skipped tonight, the others still run, and the run does not fail for it."
+              reason=""
             else
-              echo "::notice title=$site skipped::$site.toscrape.com answered HTTP $code; that source is skipped tonight, the others still run, and the run does not fail for it."
+              if [ "$code" = "000" ]; then
+                reason="$site.toscrape.com did not answer the CI runner at all — no HTTP response"
+              else
+                reason="$site.toscrape.com answered HTTP $code from the CI runner"
+              fi
+              echo "::notice title=$site skipped::$reason, so tonight's run skips it: it is not scraped and its live check does not run. The other sources still are, and the run does not fail for it."
             fi
+            echo "$site=$reason" >> "$GITHUB_OUTPUT"
           done
 
   live:
@@ -82,6 +90,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     needs: [gate, reachable]
+    # The probe's answer, as the scrape and the live checks read it: empty when
+    # the site answered, the reason it is skipped tonight when it did not. Passed
+    # through the environment rather than spliced into a `run:` line.
+    env:
+      SKIP_REASON_BOOKS: ${{ needs.reachable.outputs.books }}
+      SKIP_REASON_QUOTES: ${{ needs.reachable.outputs.quotes }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -120,15 +134,13 @@ jobs:
           fi
 
       - name: Scrape every source that answered, and export what it collected
-        # The probe's answer becomes flags here rather than in the `run:` line
-        # above, because `--skip-books=${{ ... }}` is not how the flag is spelled:
-        # it is a boolean switch that takes no value, so the shell composes it.
-        # The reason travels with the flag: a source dropped before the run never
-        # reaches `run_sources`, so the CLI is the only place that can put it in
-        # `run-stats.json` for the page to state. A source that answered the probe
-        # and then failed mid-run is skipped by the pipeline itself, with its own
-        # reason, and the command still exits 0 — a skip is a fact the run
-        # reports, not a failure of it.
+        # The probe's answer becomes flags here: `--skip-books` is a boolean switch
+        # that takes no value, so the shell composes it. The reason travels with
+        # the flag: a source dropped before the run never reaches `run_sources`,
+        # so the CLI is the only place that can put it in `run-stats.json` for the
+        # page to state. A source that answered the probe and then failed mid-run
+        # is skipped by the pipeline itself, with its own reason, and the command
+        # still exits 0 — a skip is a fact the run reports, not a failure of it.
         #
         # The exports are the same command's job (`--export-dir`), and not a step
         # of their own gated on the probe: a site can answer 200 and still yield
@@ -137,18 +149,9 @@ jobs:
         # was not collected. The CLI exports what this run's own verdict says it
         # collected.
         run: |
-          books="${{ needs.reachable.outputs.books }}"
-          quotes="${{ needs.reachable.outputs.quotes }}"
-          reason() {  # $1 = site, $2 = the code the probe recorded
-            if [ "$2" = "000" ]; then
-              echo "$1.toscrape.com did not answer the CI runner at all — no HTTP response"
-            else
-              echo "$1.toscrape.com answered HTTP $2 from the CI runner"
-            fi
-          }
           FLAGS=()
-          [ "$books" = "200" ] || FLAGS+=(--skip-books --skip-reason-books "$(reason books "$books")")
-          [ "$quotes" = "200" ] || FLAGS+=(--skip-quotes --skip-reason-quotes "$(reason quotes "$quotes")")
+          [ -z "$SKIP_REASON_BOOKS" ] || FLAGS+=(--skip-books --skip-reason-books "$SKIP_REASON_BOOKS")
+          [ -z "$SKIP_REASON_QUOTES" ] || FLAGS+=(--skip-quotes --skip-reason-quotes "$SKIP_REASON_QUOTES")
           scrapewatch scrape all --out data/run --export-dir data/exports "${FLAGS[@]}"
         env:
           SCRAPEWATCH_RECORD_VIDEO: "true"
@@ -162,7 +165,10 @@ jobs:
       - name: Check the live sites against the parsers
         # Not allowed to stop the job: a red live check is the drift signal this
         # project exists to produce, and it must not cost the night's collection.
-        # The published page states it instead of hiding it.
+        # The published page states it instead of hiding it. A site the probe
+        # found unreachable has its check skipped, with the probe's reason
+        # (`tests/live/conftest.py` reads SKIP_REASON_*), so an outage is never
+        # reported as drift.
         run: pytest -m live --alluredir=allure-results
         continue-on-error: true
 

@@ -14,6 +14,9 @@ from scrapewatch.sources.quotes import QuotesSource
 
 pytestmark = pytest.mark.live
 
+#: The site this check asks; skipped, with the probe's reason, on a night it did not answer.
+SITE = "quotes"
+
 
 def test_the_rendered_page_and_the_api_agree_on_the_first_ten_quotes(
     browser_session: BrowserSession,

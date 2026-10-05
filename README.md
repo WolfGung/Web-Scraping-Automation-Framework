@@ -11,12 +11,12 @@ A scraping and change-monitoring project for catalogue data: three sources colle
 
 | Marker | What it proves | Cases | Network |
 | --- | --- | --- | --- |
-| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, the workflows, and these pins | 267 | loopback only |
+| `unit` | pure logic and the project's own tooling: normalisation, the diff, the polite client against a stub transport, the CLI, the demo catalogue, the page builder, the workflows, and these pins | 269 | loopback only |
 | `parsers` | the parsers, against pages saved from the real sites — including the proof that the unrendered `/js/` page holds no quotes | 7 | none |
 | `integration` | the pipeline and storage against a real SQLite file: snapshots, retention, exports, a decimal that survives the round trip | 32 | none |
 | `e2e` | Chromium and the demo store, started by the suite: render, scroll to the end, log in, and a failed login that fails fast | 12 | loopback only |
 | `live` | the practice sites themselves: the parsers still fit their markup, and a full run collects the whole catalogue | 3 | the real sites |
-| the gate, `pytest -m "not live"` | the four rows above it | 318 | loopback only |
+| the gate, `pytest -m "not live"` | the four rows above it | 320 | loopback only |
 
 Counted by `pytest --collect-only`, and pinned by [`tests/unit/test_readme_pins.py`](tests/unit/test_readme_pins.py), so a number in that table cannot drift away from the suite it describes.
 
@@ -147,7 +147,7 @@ The gate is what every push and every pull request runs: [`.github/workflows/ci.
 
 [`.github/workflows/nightly.yml`](.github/workflows/nightly.yml) is the night, and the only workflow that publishes. It runs on the schedule `0 5 * * *` (UTC), or by hand from the Actions tab, one run at a time. It starts with the same gate — [`.github/workflows/checks.yml`](.github/workflows/checks.yml), which both workflows call — and then does the rest, in this order: probe both practice sites and record exactly what each answered; restore the database from the last publication; scrape every source that answered and export what it collected; record the scroll; run the live checks without letting them stop the night; then merge all three jobs' Allure results and publish the page, the report, the data and the media to GitHub Pages.
 
-A site that did not answer is skipped, with a notice on the run naming it and its reason in `run-stats.json`. The page prints that reason — a night that collected two sources out of three says so, rather than quietly publishing a smaller number, and it is still a green night. What turns the night red is a defect of this repository — a red gate, a demo store that does not start, a scrape or an export that could not write its outputs, a recording that stalled, a site that could not be built or deployed — or a last publication that could not be read back, because carrying on would start the history over. A red night publishes nothing, so the page goes on showing the last one that finished.
+A site that did not answer is skipped, with a notice on the run naming it and its reason in `run-stats.json`. The page prints that reason, and the site's live check is skipped rather than counted as drift — a night that collected two sources out of three says so, rather than quietly publishing a smaller number, and it is still a green night. What turns the night red is a defect of this repository — a red gate, a demo store that does not start, a scrape or an export that could not write its outputs, a recording that stalled, a site that could not be built or deployed — or a last publication that could not be read back, because carrying on would start the history over. A red night publishes nothing, so the page goes on showing the last one that finished.
 
 **The database is part of the publication.** It goes out as [`data/scrapewatch.sqlite3`](https://wolfgung.github.io/Web-Scraping-Automation-Framework/data/scrapewatch.sqlite3), and [`scripts/restore-db.sh`](scripts/restore-db.sh) pulls it back down before the next scrape. That is the only reason a nightly diff has a yesterday at all: a runner starts with an empty checkout, and without it every night would be a first night with every record reported as added. Its history is bounded on purpose — the last 30 nights per source, applied by `scrapewatch scrape --keep-snapshots` — because a published file that grows for ever is a download nobody makes.
 

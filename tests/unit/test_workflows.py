@@ -9,21 +9,35 @@ that crept back into `ci.yml` would make the badge a statement about somebody
 else's server again, and nothing would say so until a push went red for a site that
 happened to be down.
 
+The night has a promise of its own: a practice site that does not answer is a
+notice and a skip, never a failure. The scrape hears about it through flags; the
+live checks through `SKIP_REASON_<SITE>`, which `tests/live/conftest.py` reads — a
+name spelled in two files, pinned together here, and the skip itself proven by
+running the live checks with it set.
+
 The files are read as text, the way `_cron` and `_workflow_site_url` read them:
 what is pinned here is a handful of lines a person writes, and a YAML parser would
 be one more dependency to read them with.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import pytest
+
+from tests.live.conftest import skip_reason_variable
 
 pytestmark = pytest.mark.unit
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github" / "workflows"
+LIVE = ROOT / "tests" / "live"
 
 #: The workflow the badge reads, the gate it calls, and the night.
 CI = "ci.yml"
@@ -50,6 +64,9 @@ REACHES_OUTSIDE = {
     "reads the published site": r"SITE_URL",
     "publishes": r"deploy-pages|upload-pages-artifact",
 }
+
+#: Collecting and skipping two checks takes a second or two; a minute means a hang.
+RUN_TIMEOUT_SECONDS = 120
 
 
 def _path(name: str) -> str:
@@ -80,6 +97,21 @@ def _triggers(name: str) -> set[str]:
 def _called(name: str) -> list[str]:
     """The reusable workflows of this repository a workflow calls, by file name."""
     return re.findall(r"^\s+uses:\s*\./\.github/workflows/([\w.-]+)\s*$", _commands(name), flags=re.M)
+
+
+def _live_sites() -> dict[str, Path]:
+    """The site each live check asks, as its module states it in `SITE`."""
+    sites: dict[str, Path] = {}
+    for module in sorted(LIVE.glob("test_*.py")):
+        stated = re.findall(r'^SITE = "([a-z]+)"$', module.read_text(encoding="utf-8"), flags=re.M)
+        if stated:
+            sites[stated[0]] = module
+    assert sites, (
+        "no module under tests/live states the site it checks as SITE, so no live check "
+        "can be skipped on a night its site did not answer — and the page would read the "
+        "failure as drift."
+    )
+    return sites
 
 
 # -- the badge, and the workflow behind it -------------------------------------------
@@ -157,3 +189,78 @@ def test_every_job_runs_on_the_pinned_image() -> None:
     assert images, "no job in any workflow states the image it runs on."
     wrong = sorted((name, image) for name, image in images if image != RUNNER)
     assert not wrong, f"jobs run on {wrong}; every job is pinned to {RUNNER}."
+
+
+def test_the_night_hands_each_live_check_the_reason_its_site_was_skipped() -> None:
+    """The variable the workflow sets is the variable `tests/live/conftest.py` reads."""
+    commands = _commands(NIGHTLY)
+    probed = re.search(r"for site in ([a-z ]+); do", commands)
+    assert probed, f"{_path(NIGHTLY)} no longer probes the practice sites in a loop this reader can find."
+    sites = _live_sites()
+    assert set(probed.group(1).split()) == set(sites), (
+        f"{_path(NIGHTLY)} probes {probed.group(1).split()}, but the live checks ask "
+        f"{sorted(sites)}: a site with a check and no probe is never skipped, and a probe "
+        f"with no check skips nothing."
+    )
+    for site in sites:
+        variable = skip_reason_variable(site)
+        wired = rf"^\s+{variable}:\s*\$\{{\{{\s*needs\.reachable\.outputs\.{site}\s*\}}\}}\s*$"
+        assert re.search(wired, commands, flags=re.M), (
+            f"{_path(NIGHTLY)} does not set {variable} from the probe's answer for {site}, "
+            f"so on a night {site} does not answer its live check fails instead of being "
+            f"skipped — and the page reads that failure as drift."
+        )
+
+
+def test_a_live_check_whose_site_did_not_answer_is_skipped_with_the_probes_reason() -> None:
+    """Both site checks, run with their reasons set: both skip, saying why, before asking anything.
+
+    A request that got past the skip would leave this machine, so every proxy is
+    pointed at a closed loopback port: such a request fails here instead of reaching
+    a site, and the check reads as failed rather than skipped. The quotes check would
+    also have launched Chromium first, which the gate's job never installs.
+    """
+    sites = _live_sites()
+    reasons = {site: f"{site}.toscrape.com did not answer (set by {Path(__file__).name})" for site in sites}
+    closed = "http://127.0.0.1:9"
+    env = {
+        **os.environ,
+        "PYTHONPATH": f"{ROOT / 'src'}{os.pathsep}{ROOT}",
+        "HTTP_PROXY": closed,
+        "HTTPS_PROXY": closed,
+        "ALL_PROXY": closed,
+        "NO_PROXY": "",
+        **{skip_reason_variable(site): reason for site, reason in reasons.items()},
+    }
+    with tempfile.TemporaryDirectory() as spool:
+        proc = subprocess.run(
+            [
+                sys.executable, "-m", "pytest", "-m", "live", "-q", "-p", "no:cacheprovider",
+                f"--alluredir={spool}", *(str(module.relative_to(ROOT)) for module in sites.values()),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=RUN_TIMEOUT_SECONDS,
+        )
+        results = [json.loads(path.read_text(encoding="utf-8")) for path in Path(spool).glob("*-result.json")]
+
+    # Allure names a result `<package>.<module>#<test>`; the module is what says which site.
+    outcomes = {
+        result["fullName"].split("#")[0].rsplit(".", 1)[-1]: (
+            result["status"],
+            result.get("statusDetails", {}).get("message", ""),
+        )
+        for result in results
+    }
+    assert proc.returncode == 0 and len(results) == len(sites), (
+        f"running the live checks of {sorted(sites)} with their skip reasons set exited "
+        f"{proc.returncode} with {len(results)} result(s):\n{proc.stdout}\n{proc.stderr}"
+    )
+    for site, module in sites.items():
+        status, message = outcomes.get(module.stem, (None, ""))
+        assert status == "skipped" and reasons[site] in message, (
+            f"the live check in {module.relative_to(ROOT)} came out {status!r} ({message!r}), "
+            f"not skipped with the probe's reason {reasons[site]!r}.\n{proc.stdout}"
+        )

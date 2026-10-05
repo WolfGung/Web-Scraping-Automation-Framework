@@ -9,6 +9,9 @@ from scrapewatch.sources.books import BooksSource
 
 pytestmark = pytest.mark.live
 
+#: The site this check asks; skipped, with the probe's reason, on a night it did not answer.
+SITE = "books"
+
 
 def test_the_first_two_pages_yield_forty_books_politely() -> None:
     with PoliteClient(Settings()) as client:
